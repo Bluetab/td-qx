@@ -4,12 +4,23 @@ defmodule TdQx.MixProject do
   def project do
     [
       app: :td_qx,
-      version: "0.1.0",
+      version:
+        case System.get_env("APP_VERSION") do
+          nil -> "5.7.0-local"
+          v -> v
+        end,
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      releases: [
+        td_qx: [
+          include_executables_for: [:unix],
+          applications: [runtime_tools: :permanent],
+          steps: [:assemble, &copy_bin_files/1, :tar]
+        ]
+      ]
     ]
   end
 
@@ -26,6 +37,11 @@ defmodule TdQx.MixProject do
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp copy_bin_files(release) do
+    File.cp_r("rel/bin", Path.join(release.path, "bin"))
+    release
+  end
 
   # Specifies your project dependencies.
   #
