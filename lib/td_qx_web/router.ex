@@ -7,5 +7,7 @@ defmodule TdQxWeb.Router do
 
   scope "/api", TdQxWeb do
     pipe_through :api
+
+    get "/ping", PingController, :ping
   end
 end
