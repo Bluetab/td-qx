@@ -7,6 +7,8 @@
 # General application configuration
 import Config
 
+config :td_qx, :env, Mix.env()
+
 config :td_qx,
   ecto_repos: [TdQx.Repo]
 

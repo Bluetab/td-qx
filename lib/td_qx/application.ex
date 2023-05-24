@@ -7,23 +7,31 @@ defmodule TdQx.Application do
 
   @impl true
   def start(_type, _args) do
-    topologies = [
-      example: [
-        strategy: Cluster.Strategy.LocalEpmd,
-        config: [hosts: [:td_dd, :td_qx]]
-      ]
-    ]
+    env = Application.get_env(:td_qx, :env)
 
     children = [
       TdQx.Repo,
       TdQxWeb.Endpoint,
-      {Cluster.Supervisor, [topologies, [name: TdQx.ClusterSupervisor]]}
-    ]
+    ] ++ workers(env)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: TdQx.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp workers(:test), do: []
+
+  defp workers(_env) do
+    [
+      topologies = [
+        example: [
+          strategy: Cluster.Strategy.LocalEpmd,
+          config: [hosts: [:td_dd, :td_qx]]
+        ]
+      ]
+      {Cluster.Supervisor, [topologies, [name: TdQx.ClusterSupervisor]]}
+    ]
   end
 
   # Tell Phoenix to update the endpoint configuration
