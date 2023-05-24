@@ -15,10 +15,7 @@ config :td_qx, TdQx.Repo,
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :td_qx, TdQxWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "tW/MTEGpWRiIEf2zhkL5X3zsDQlY8NqNCbnHgVhw0KDbZ35zz2Jpeo5PDhUBWcqg",
-  server: false
+config :td_qx, TdQxWeb.Endpoint, server: false
 
 # Print only warnings and errors during test
 config :logger, level: :warning
