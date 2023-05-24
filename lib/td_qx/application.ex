@@ -9,10 +9,11 @@ defmodule TdQx.Application do
   def start(_type, _args) do
     env = Application.get_env(:td_qx, :env)
 
-    children = [
-      TdQx.Repo,
-      TdQxWeb.Endpoint,
-    ] ++ workers(env)
+    children =
+      [
+        TdQx.Repo,
+        TdQxWeb.Endpoint
+      ] ++ workers(env)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -23,13 +24,14 @@ defmodule TdQx.Application do
   defp workers(:test), do: []
 
   defp workers(_env) do
-    [
-      topologies = [
-        example: [
-          strategy: Cluster.Strategy.LocalEpmd,
-          config: [hosts: [:td_dd, :td_qx]]
-        ]
+    topologies = [
+      example: [
+        strategy: Cluster.Strategy.LocalEpmd,
+        config: [hosts: [:td_dd, :td_qx]]
       ]
+    ]
+
+    [
       {Cluster.Supervisor, [topologies, [name: TdQx.ClusterSupervisor]]}
     ]
   end
