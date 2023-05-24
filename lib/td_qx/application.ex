@@ -15,16 +15,8 @@ defmodule TdQx.Application do
     ]
 
     children = [
-      # Start the Telemetry supervisor
-      TdQxWeb.Telemetry,
-      # Start the Ecto repository
       TdQx.Repo,
-      # Start the PubSub system
-      {Phoenix.PubSub, name: TdQx.PubSub},
-      # Start the Endpoint (http/https)
       TdQxWeb.Endpoint,
-      # Start a worker by calling: TdQx.Worker.start_link(arg)
-      # {TdQx.Worker, arg},
       {Cluster.Supervisor, [topologies, [name: TdQx.ClusterSupervisor]]}
     ]
 

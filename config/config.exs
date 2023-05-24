@@ -18,7 +18,6 @@ config :td_qx, TdQxWeb.Endpoint,
     formats: [json: TdQxWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: TdQx.PubSub,
   live_view: [signing_salt: "ZOlKIPdj"]
 
 # Configures Elixir's Logger

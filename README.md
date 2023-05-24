@@ -35,6 +35,8 @@ guides](http://www.phoenixframework.org/docs/deployment).
 - [Ecto](http://www.phoenixframework.org/) - Phoenix and Ecto integration
 - [Postgrex](http://hexdocs.pm/postgrex/) - PostgreSQL driver for Elixir
 - [Cowboy](https://ninenines.eu) - HTTP server for Erlang/OTP
+- [Credo](http://credo-ci.org/) - Static code analysis tool for the Elixir
+  language
 
 ## Authors
 
