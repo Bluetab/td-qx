@@ -8,10 +8,10 @@ import Config
 config :td_qx, TdQx.Repo,
   username: "postgres",
   password: "postgres",
-  hostname: "localhost",
+  hostname: "postgres",
   database: "td_qx_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: 10
+  pool_size: 1
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

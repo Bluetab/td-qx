@@ -4,7 +4,7 @@ import Config
 config :td_qx, TdQx.Repo,
   username: "postgres",
   password: "postgres",
-  hostname: "localhost",
+  hostname: "postgres",
   database: "td_qx_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
