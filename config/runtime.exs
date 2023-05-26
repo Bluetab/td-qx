@@ -40,9 +40,9 @@ if config_env() == :prod do
         strategy: Elixir.Cluster.Strategy.Kubernetes,
         config: [
           mode: :ip,
-          kubernetes_node_basename: System.fetch_env!("K8S_NODE_BASENAME"),
-          kubernetes_selector: System.fetch_env!("K8S_SELECTOR"),
-          kubernetes_namespace: System.fetch_env!("K8S_NAMESPACE"),
+          kubernetes_node_basename: System.get_env("K8S_NODE_BASENAME", "truedat"),
+          kubernetes_selector: System.get_env("K8S_SELECTOR", ""),
+          kubernetes_namespace: System.get_env("K8S_NAMESPACE", "default"),
           polling_interval: 10_000
         ]
       ]
