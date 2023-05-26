@@ -24,13 +24,7 @@ defmodule TdQx.Application do
   defp workers(:test), do: []
 
   defp workers(_env) do
-    topologies = [
-      example: [
-        strategy: Cluster.Strategy.LocalEpmd,
-        config: [hosts: [:td_dd, :td_qx]]
-      ]
-    ]
-
+    topologies = Application.get_env(:libcluster, :topologies)
     [
       {Cluster.Supervisor, [topologies, [name: TdQx.ClusterSupervisor]]}
     ]

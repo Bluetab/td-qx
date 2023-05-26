@@ -33,4 +33,18 @@ if config_env() == :prod do
     timeout: System.get_env("DB_TIMEOUT_MILLIS", "15000") |> String.to_integer(),
     ssl: System.get_env("DB_SSL", "") |> String.downcase() == "true",
     socket_options: maybe_ipv6
+
+  config :libcluster,
+    topologies: [
+      k8s: [
+        strategy: Elixir.Cluster.Strategy.Kubernetes,
+        config: [
+          mode: :ip,
+          kubernetes_node_basename: System.fetch_env!("K8S_NODE_BASENAME"),
+          kubernetes_selector: System.fetch_env!("K8S_SELECTOR"),
+          kubernetes_namespace: System.fetch_env!("K8S_NAMESPACE"),
+          polling_interval: 10_000
+        ]
+      ]
+    ]
 end
