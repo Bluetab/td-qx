@@ -9,9 +9,18 @@ import Config
 
 config :td_qx, :env, Mix.env()
 
+# Cluster config
 config :libcluster,
   topologies: [
-    local_epdm: [ strategy: Elixir.Cluster.Strategy.LocalEpmd ]
+    local_epdm: [
+      strategy: Elixir.Cluster.Strategy.LocalEpmd,
+      config: [
+        hosts: [:td_dd],
+        connect: {:net_kernel, :connect_node, []},
+        list_nodes: {:erlang, :nodes, [:connected]},
+      ]
+
+    ]
   ]
 
 config :td_qx,
