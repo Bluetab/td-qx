@@ -38,6 +38,7 @@ defmodule TdQxWeb.Endpoint do
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
+  plug(CORSPlug, origin: ["*"])
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options

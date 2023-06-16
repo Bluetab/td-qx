@@ -57,7 +57,10 @@ defmodule TdQx.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:libcluster, "~> 3.3"}
+      {:td_cluster, path: "../td-cluster"},
+      {:cors_plug, "~> 3.0"},
+      {:ex_machina, "~> 2.7.0", only: :test},
+      {:mox, "~> 1.0", only: :test}
     ]
   end
 
