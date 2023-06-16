@@ -10,4 +10,10 @@ defmodule TdQxWeb.Router do
 
     get "/ping", PingController, :ping
   end
+
+  scope "/api", TdQxWeb do
+    pipe_through :api
+
+    resources "/datasets", DataSetController, except: [:new, :edit]
+  end
 end
