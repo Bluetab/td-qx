@@ -9,17 +9,20 @@ import Config
 
 config :td_qx, :env, Mix.env()
 
-# Cluster config
-config :libcluster,
+config :td_cluster,
+  scope: :truedat,
   topologies: [
-    local_epdm: [
-      strategy: Elixir.Cluster.Strategy.LocalEpmd,
+    truedat: [
+      strategy: TdCluster.Strategy,
       config: [
-        hosts: [:td_dd],
-        connect: {:net_kernel, :connect_node, []},
-        list_nodes: {:erlang, :nodes, [:connected]},
+        node_template: System.get_env("RELEASE_NODE_TEMPLATE", "{{service}}@{{hostname}}"),
+        services: [
+          :dd,
+          :qx
+        ],
+        groups: [:qx],
+        polling_interval: 10_000
       ]
-
     ]
   ]
 
