@@ -26,6 +26,14 @@ defmodule TdQx.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       import TdQx.DataCase
+
+      import TdQx.Factory
+
+      # Import Mox for Mock TdCluster.ClusterHandler
+
+      import Mox
+
+      alias TdQxWeb.Router.Helpers, as: Routes
     end
   end
 

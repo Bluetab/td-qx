@@ -28,6 +28,14 @@ defmodule TdQxWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import TdQxWeb.ConnCase
+
+      import TdQx.Factory
+
+      # Import Mox for Mock TdCluster.ClusterHandler
+
+      import Mox
+
+      alias TdQxWeb.Router.Helpers, as: Routes
     end
   end
 
