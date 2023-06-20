@@ -20,6 +20,20 @@ if System.get_env("PHX_SERVER") do
   config :td_qx, TdQxWeb.Endpoint, server: true
 end
 
+config :td_cluster,
+  scope: :truedat,
+  topologies: [
+    truedat: [
+      strategy: TdCluster.Strategy,
+      config: [
+        node_template: System.get_env("RELEASE_NODE_TEMPLATE", "{{service}}@{{hostname}}"),
+        services: [:dd],
+        groups: [:qx],
+        polling_interval: 10_000
+      ]
+    ]
+  ]
+
 if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 

@@ -135,7 +135,7 @@ defmodule TdQx.DataSets do
 
   defp enrich({:ok, dataset}, enrich: fields), do: {:ok, enrich(dataset, enrich: fields)}
 
-  defp enrich({:error, dataset} = error, _), do: error
+  defp enrich({:error, _dataset} = error, _), do: error
 
   defp enrich(dataset, enrich: fields), do: Enum.reduce(fields, dataset, &enrich(&1, &2))
 

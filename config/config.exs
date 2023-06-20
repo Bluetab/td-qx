@@ -9,23 +9,6 @@ import Config
 
 config :td_qx, :env, Mix.env()
 
-config :td_cluster,
-  scope: :truedat,
-  topologies: [
-    truedat: [
-      strategy: TdCluster.Strategy,
-      config: [
-        node_template: System.get_env("RELEASE_NODE_TEMPLATE", "{{service}}@{{hostname}}"),
-        services: [
-          :dd,
-          :qx
-        ],
-        groups: [:qx],
-        polling_interval: 10_000
-      ]
-    ]
-  ]
-
 config :td_qx,
   ecto_repos: [TdQx.Repo]
 
