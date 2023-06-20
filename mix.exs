@@ -57,7 +57,7 @@ defmodule TdQx.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:td_cluster, path: "../td-cluster"},
+      {:td_cluster, git: "https://github.com/Bluetab/td-cluster.git", branch: "feature/td-5808"},
       {:cors_plug, "~> 3.0"},
       {:ex_machina, "~> 2.7.0", only: :test},
       {:mox, "~> 1.0", only: :test}
