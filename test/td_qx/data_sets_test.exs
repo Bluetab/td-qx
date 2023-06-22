@@ -89,5 +89,5 @@ defmodule TdQx.DataSetsTest do
   end
 
   defp cluster_handler_expect(expected, times \\ 1),
-    do: expect(MockClusterHandler, :call, times, fn _, _, _, _ -> expected end)
+    do: expect(MockClusterHandler, :call!, times, fn _, _, _, _ -> expected end)
 end
