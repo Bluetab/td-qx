@@ -115,7 +115,7 @@ defmodule TdQx.DataSets do
     data_structures_ids = Enum.map(datasets, &Map.get(&1, :data_structure_id))
 
     {:ok, data_structures} =
-      ClusterHandler.call(:dd, TdDd.DataStructures, :get_data_structures, [data_structures_ids])
+      ClusterHandler.call!(:dd, TdDd.DataStructures, :get_data_structures, [data_structures_ids])
 
     Enum.map(datasets, fn data_set ->
       data_structure_id = data_set.data_structure_id
@@ -126,7 +126,7 @@ defmodule TdQx.DataSets do
 
   defp enrich(:data_structure, dataset) do
     {:ok, data_structure} =
-      ClusterHandler.call(:dd, TdDd.DataStructures, :get_data_structure!, [
+      ClusterHandler.call!(:dd, TdDd.DataStructures, :get_data_structure!, [
         dataset.data_structure_id
       ])
 
