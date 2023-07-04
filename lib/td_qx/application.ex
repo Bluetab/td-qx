@@ -24,9 +24,8 @@ defmodule TdQx.Application do
   defp workers(:test), do: []
 
   defp workers(_env) do
-    topologies = Application.get_env(:libcluster, :topologies)
     [
-      {Cluster.Supervisor, [topologies, [name: TdQx.ClusterSupervisor]]}
+      TdCluster.Supervisor
     ]
   end
 

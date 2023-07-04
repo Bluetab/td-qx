@@ -9,11 +9,6 @@ import Config
 
 config :td_qx, :env, Mix.env()
 
-config :libcluster,
-  topologies: [
-    local_epdm: [ strategy: Elixir.Cluster.Strategy.LocalEpmd ]
-  ]
-
 config :td_qx,
   ecto_repos: [TdQx.Repo]
 
