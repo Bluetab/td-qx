@@ -11,7 +11,7 @@ defmodule TdQx.Factory do
     data_structure_id = sequence(:data_structure_id, & &1)
 
     %DataSet{
-      name: sequence(:name, &"DataSet #{&1})"),
+      name: sequence(:dataset_name, &"DataSet #{&1})"),
       data_structure_id: data_structure_id,
       data_structure: build(:data_structure, data_structure_id: data_structure_id)
     }
@@ -21,7 +21,8 @@ defmodule TdQx.Factory do
   def data_structure_factory(attrs) do
     %{
       id: sequence(:id, & &1),
-      system_id: sequence(:system_id, & &1)
+      system_id: sequence(:system_id, & &1),
+      external_id: sequence(:data_structure_external_id, &"external_id_#{&1})")
     }
     |> merge_attributes(attrs)
   end

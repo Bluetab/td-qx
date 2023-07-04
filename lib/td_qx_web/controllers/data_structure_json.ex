@@ -21,7 +21,8 @@ defmodule TdQxWeb.DataStructureJson do
     data_structure
     |> Map.take([
       :id,
-      :system_id
+      :system_id,
+      :external_id
     ])
   end
 end

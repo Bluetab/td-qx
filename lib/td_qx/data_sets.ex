@@ -9,6 +9,8 @@ defmodule TdQx.DataSets do
   alias TdQx.DataSets.DataSet
   alias TdQx.Repo
 
+  require Logger
+
   @doc """
   Returns the list of data_sets.
 
@@ -21,7 +23,7 @@ defmodule TdQx.DataSets do
   def list_data_sets(opts \\ []) do
     DataSet
     |> Repo.all()
-    |> enrich(opts)
+    |> maybe_enrich(opts[:enrich])
   end
 
   @doc """
@@ -41,7 +43,7 @@ defmodule TdQx.DataSets do
   def get_data_set!(id, opts \\ []) do
     DataSet
     |> Repo.get!(id)
-    |> enrich(opts)
+    |> maybe_enrich(opts[:enrich])
   end
 
   @doc """
@@ -56,11 +58,11 @@ defmodule TdQx.DataSets do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_data_set(attrs, opts \\ []) do
+  def create_data_set(attrs) do
     %DataSet{}
     |> DataSet.changeset(attrs)
     |> Repo.insert()
-    |> enrich(opts)
+    |> maybe_enrich()
   end
 
   @doc """
@@ -75,11 +77,11 @@ defmodule TdQx.DataSets do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_data_set(%DataSet{} = data_set, attrs, opts \\ []) do
+  def update_data_set(%DataSet{} = data_set, attrs) do
     data_set
     |> DataSet.changeset(attrs)
     |> Repo.update()
-    |> enrich(opts)
+    |> maybe_enrich()
   end
 
   @doc """
@@ -111,33 +113,52 @@ defmodule TdQx.DataSets do
     DataSet.changeset(data_set, attrs)
   end
 
-  defp enrich(:data_structure, datasets) when is_list(datasets) do
-    data_structures_ids = Enum.map(datasets, &Map.get(&1, :data_structure_id))
+  defp maybe_enrich(data_set), do: maybe_enrich(data_set, true)
 
-    {:ok, data_structures} =
-      ClusterHandler.call!(:dd, TdDd.DataStructures, :get_data_structures, [data_structures_ids])
+  defp maybe_enrich(data_set, true), do: do_enrich(data_set)
+  defp maybe_enrich(data_set, _), do: data_set
 
-    Enum.map(datasets, fn data_set ->
-      data_structure_id = data_set.data_structure_id
-      data_structure = Enum.find(data_structures, &(&1.id === data_structure_id))
-      Map.put(data_set, :data_structure, data_structure)
-    end)
+  defp do_enrich({:ok, data_set}), do: {:ok, do_enrich(data_set)}
+
+  defp do_enrich({:error, _dataset} = error), do: error
+
+  defp do_enrich(data_sets) when is_list(data_sets) do
+    data_structures_ids =
+      data_sets
+      |> Enum.map(&Map.get(&1, :data_structure_id))
+      |> Enum.uniq()
+
+    cluster_response =
+      ClusterHandler.call(:dd, TdDd.DataStructures, :get_data_structures, [data_structures_ids])
+
+    case cluster_response do
+      {:ok, data_structures} ->
+        data_structures_map =
+          data_structures
+          |> Enum.map(fn data_structure -> {data_structure.id, data_structure} end)
+          |> Map.new()
+
+        Enum.map(
+          data_sets,
+          &Map.put(&1, :data_structure, Map.get(data_structures_map, &1.data_structure_id))
+        )
+
+      _ ->
+        Logger.warning("Failed to enrich DataSet from cluster")
+        data_sets
+    end
   end
 
-  defp enrich(:data_structure, dataset) do
-    {:ok, data_structure} =
-      ClusterHandler.call!(:dd, TdDd.DataStructures, :get_data_structure!, [
-        dataset.data_structure_id
-      ])
+  defp do_enrich(data_set) do
+    case ClusterHandler.call(:dd, TdDd.DataStructures, :get_data_structure!, [
+           data_set.data_structure_id
+         ]) do
+      {:ok, data_structure} ->
+        Map.put(data_set, :data_structure, data_structure)
 
-    Map.put(dataset, :data_structure, data_structure)
+      _ ->
+        Logger.warning("Failed to enrich DataSet from cluster")
+        data_set
+    end
   end
-
-  defp enrich({:ok, dataset}, enrich: fields), do: {:ok, enrich(dataset, enrich: fields)}
-
-  defp enrich({:error, _dataset} = error, _), do: error
-
-  defp enrich(dataset, enrich: fields), do: Enum.reduce(fields, dataset, &enrich(&1, &2))
-
-  defp enrich(dataset, _), do: dataset
 end

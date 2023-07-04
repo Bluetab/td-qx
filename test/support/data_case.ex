@@ -29,11 +29,9 @@ defmodule TdQx.DataCase do
 
       import TdQx.Factory
 
-      # Import Mox for Mock TdCluster.ClusterHandler
+      import ClusterHandlerHelper
 
-      import Mox
-
-      alias TdQxWeb.Router.Helpers, as: Routes
+      # alias TdQxWeb.Router.Helpers, as: Routes
     end
   end
 

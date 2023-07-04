@@ -12,16 +12,16 @@ defmodule TdQxWeb.DataSetControllerTest do
   describe "index" do
     test "lists all data_sets", %{conn: conn} do
       [%{id: ds_id1}, %{id: ds_id2}, %{id: ds_id3}] =
-        datasets =
-        ["dataset1", "dataset2", "dataset3"]
+        data_sets =
+        ["data_set1", "data_set2", "data_set3"]
         |> Enum.map(&insert(:data_set, name: &1))
 
       [%{id: data_struct_id1}, %{id: data_struct_id2}, %{id: data_struct_id3}] =
         data_structures =
-        datasets
+        data_sets
         |> Enum.map(&build(:data_structure, id: &1.data_structure_id))
 
-      cluster_handler_expect({:ok, data_structures})
+      cluster_handler_expect(:call, {:ok, data_structures})
 
       assert %{
                "data" => [
@@ -40,7 +40,7 @@ defmodule TdQxWeb.DataSetControllerTest do
                ]
              } =
                conn
-               |> get(Routes.data_set_path(conn, :index))
+               |> get(~p"/api/data_sets")
                |> json_response(200)
     end
   end
@@ -50,7 +50,7 @@ defmodule TdQxWeb.DataSetControllerTest do
       %{id: ds_id} = data_structure = build(:data_structure)
       %{id: id} = insert(:data_set, data_structure_id: ds_id)
 
-      cluster_handler_expect({:ok, data_structure})
+      cluster_handler_expect(:call, {:ok, data_structure})
 
       assert %{
                "data" => %{
@@ -62,15 +62,16 @@ defmodule TdQxWeb.DataSetControllerTest do
                }
              } =
                conn
-               |> get(Routes.data_set_path(conn, :show, id))
+               |> get(~p"/api/data_sets/#{id}")
                |> json_response(:ok)
     end
 
     test "show data_sets with invalid data", %{conn: conn} do
       %{id: id} = insert(:data_set)
+      invalid_id = id + 1
 
       assert_error_sent(:not_found, fn ->
-        get(conn, Routes.data_set_path(conn, :show, id + 1))
+        get(conn, ~p"/api/data_sets/#{invalid_id}")
       end)
     end
   end
@@ -79,16 +80,16 @@ defmodule TdQxWeb.DataSetControllerTest do
     test "create data_set when data is valid", %{conn: conn} do
       %{id: data_structure_id} = data_structure = build(:data_structure)
 
-      dataset_attrs = %{
+      data_set_attrs = %{
         name: "foo",
         data_structure_id: data_structure_id
       }
 
-      cluster_handler_expect({:ok, data_structure}, 2)
+      cluster_handler_expect(:call, {:ok, data_structure}, 2)
 
       assert %{"data" => %{"id" => id}} =
                conn
-               |> post(Routes.data_set_path(conn, :create, data_set: dataset_attrs))
+               |> post(~p"/api/data_sets", data_set: data_set_attrs)
                |> json_response(201)
 
       assert %{
@@ -102,13 +103,13 @@ defmodule TdQxWeb.DataSetControllerTest do
                }
              } =
                conn
-               |> get(Routes.data_set_path(conn, :show, id))
+               |> get(~p"/api/data_sets/#{id}")
                |> json_response(200)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
       assert conn
-             |> post(Routes.data_set_path(conn, :create, data_set: @invalid_data_set_attrs))
+             |> post(~p"/api/data_sets", data_set: @invalid_data_set_attrs)
              |> json_response(:unprocessable_entity)
     end
   end
@@ -122,10 +123,10 @@ defmodule TdQxWeb.DataSetControllerTest do
         name: "foo"
       }
 
-      cluster_handler_expect({:ok, data_structure}, 2)
+      cluster_handler_expect(:call, {:ok, data_structure}, 2)
 
       assert conn
-             |> put(Routes.data_set_path(conn, :update, data_set, data_set: update_attr))
+             |> put(~p"/api/data_sets/#{data_set}", data_set: update_attr)
              |> json_response(:ok)
 
       assert %{
@@ -136,7 +137,7 @@ defmodule TdQxWeb.DataSetControllerTest do
                }
              } =
                conn
-               |> get(Routes.data_set_path(conn, :show, data_set))
+               |> get(~p"/api/data_sets/#{data_set}")
                |> json_response(:ok)
     end
 
@@ -144,9 +145,7 @@ defmodule TdQxWeb.DataSetControllerTest do
       data_set = insert(:data_set)
 
       assert conn
-             |> put(
-               Routes.data_set_path(conn, :update, data_set, data_set: @invalid_data_set_attrs)
-             )
+             |> put(~p"/api/data_sets/#{data_set}", data_set: @invalid_data_set_attrs)
              |> json_response(:unprocessable_entity)
     end
   end
@@ -156,23 +155,21 @@ defmodule TdQxWeb.DataSetControllerTest do
       data_set = insert(:data_set)
 
       assert conn
-             |> delete(Routes.data_set_path(conn, :delete, data_set))
+             |> delete(~p"/api/data_sets/#{data_set}")
              |> response(:no_content)
 
       assert_error_sent(:not_found, fn ->
-        get(conn, Routes.data_set_path(conn, :show, data_set))
+        get(conn, ~p"/api/data_sets/#{data_set}")
       end)
     end
 
     test "deletes invalid data_set renders error", %{conn: conn} do
       %{id: id} = insert(:data_set)
+      invalid_id = id + 1
 
       assert_error_sent(:not_found, fn ->
-        delete(conn, Routes.data_set_path(conn, :delete, id + 1))
+        delete(conn, ~p"/api/data_sets/#{invalid_id}")
       end)
     end
   end
-
-  defp cluster_handler_expect(expected, times \\ 1),
-    do: expect(MockClusterHandler, :call!, times, fn _, _, _, _ -> expected end)
 end
