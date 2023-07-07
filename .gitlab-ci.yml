@@ -38,7 +38,6 @@ test:
 publish:
   stage: publish
   only:
-    - main
     - develop
     - tags
   tags:
@@ -51,7 +50,6 @@ publish:
 acceptance:
   stage: acceptance
   only:
-    - main
     - develop
     - tags
   tags:
@@ -66,8 +64,8 @@ acceptance:
 acceptance:branches:
   stage: acceptance
   except:
-    - main
     - develop
+    - main
     - tags
   tags:
     - docker-compose
@@ -84,7 +82,6 @@ deploy:
   tags:
     - kubectl
   only:
-    - main
     - develop
     - tags
   dependencies: []
