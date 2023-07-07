@@ -17,6 +17,8 @@ config :td_qx, TdQx.Repo,
 # you can enable the server option below.
 config :td_qx, TdQxWeb.Endpoint, server: false
 
+config :td_cluster, :cluster_handler, MockClusterHandler
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

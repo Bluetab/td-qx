@@ -1,5 +1,5 @@
 variables:
-  VERSION: "5.8.1" # used for alpha builds
+  VERSION: "5.10.1" # used for alpha builds
   APP_NAME: "td_qx"
   COMPOSE_FILE: "ci/docker-compose.yml"
   COMPOSE_PROJECT_NAME: "${APP_NAME}_${CI_JOB_ID}"
@@ -38,7 +38,7 @@ test:
 publish:
   stage: publish
   only:
-    - main
+    - develop
     - tags
   tags:
     - docker
@@ -50,7 +50,7 @@ publish:
 acceptance:
   stage: acceptance
   only:
-    - main
+    - develop
     - tags
   tags:
     - docker-compose
@@ -64,6 +64,7 @@ acceptance:
 acceptance:branches:
   stage: acceptance
   except:
+    - develop
     - main
     - tags
   tags:
@@ -81,7 +82,7 @@ deploy:
   tags:
     - kubectl
   only:
-    - main
+    - develop
     - tags
   dependencies: []
   script:

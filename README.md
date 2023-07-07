@@ -37,6 +37,9 @@ guides](http://www.phoenixframework.org/docs/deployment).
 - [Cowboy](https://ninenines.eu) - HTTP server for Erlang/OTP
 - [Credo](http://credo-ci.org/) - Static code analysis tool for the Elixir
   language
+- [cors_plug](https://hex.pm/packages/cors_plug) - Plug for CORS support
+- [ex_machina](https://hex.pm/packages/ex_machina) - A factory library for test
+  data
 
 ## Authors
 
