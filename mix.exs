@@ -30,7 +30,7 @@ defmodule TdQx.MixProject do
   def application do
     [
       mod: {TdQx.Application, []},
-      extra_applications: [:logger, :runtime_tools, :td_cluster]
+      extra_applications: [:logger, :runtime_tools]
     ]
   end
 
@@ -59,7 +59,7 @@ defmodule TdQx.MixProject do
       {:guardian, "~> 2.0"},
       {:bodyguard, "~> 2.4"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:td_cluster, git: "https://github.com/Bluetab/td-cluster.git", tag: "5.10.1"},
+      {:td_cluster, git: "https://github.com/Bluetab/td-cluster.git", tag: "5.10.2"},
       {:td_cache, git: "https://github.com/Bluetab/td-cache.git", tag: "5.9.0"},
       {:cors_plug, "~> 3.0"},
       {:ex_machina, "~> 2.7.0", only: :test},

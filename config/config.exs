@@ -8,6 +8,7 @@
 import Config
 
 config :td_qx, :env, Mix.env()
+config :td_cluster, :env, Mix.env()
 
 config :td_qx,
   ecto_repos: [TdQx.Repo]
