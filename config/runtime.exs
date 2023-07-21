@@ -37,4 +37,9 @@ if config_env() == :prod do
     socket_options: maybe_ipv6
 
   config :td_qx, Truedat.Auth.Guardian, secret_key: System.fetch_env!("GUARDIAN_SECRET_KEY")
+
+  config :td_cache,
+    redis_host: System.fetch_env!("REDIS_HOST"),
+    port: System.get_env("REDIS_PORT", "6379") |> String.to_integer(),
+    password: System.get_env("REDIS_PASSWORD")
 end
