@@ -7,6 +7,17 @@ defmodule TdQx.Factory do
 
   alias TdQx.DataSets.DataSet
 
+  def user_factory do
+    %{
+      id: System.unique_integer([:positive]),
+      role: "user",
+      user_name: sequence("user_name"),
+      full_name: sequence("full_name"),
+      external_id: sequence("user_external_id"),
+      email: sequence("email") <> "@example.com"
+    }
+  end
+
   def data_set_factory(attrs) do
     data_structure_id = sequence(:data_structure_id, & &1)
 
