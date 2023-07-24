@@ -8,6 +8,7 @@
 import Config
 
 config :td_qx, :env, Mix.env()
+config :td_cluster, :env, Mix.env()
 
 config :td_qx,
   ecto_repos: [TdQx.Repo]
@@ -21,6 +22,15 @@ config :td_qx, TdQxWeb.Endpoint,
     layout: false
   ],
   live_view: [signing_salt: "ZOlKIPdj"]
+
+config :td_qx, Truedat.Auth.Guardian,
+  allowed_algos: ["HS512"],
+  issuer: "tdauth",
+  aud: "truedat",
+  ttl: {1, :hours},
+  secret_key: "SuperSecretTruedat"
+
+config :bodyguard, default_error: :forbidden
 
 # Configures Elixir's Logger
 config :logger, :console,

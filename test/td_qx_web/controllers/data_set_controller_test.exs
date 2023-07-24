@@ -10,6 +10,7 @@ defmodule TdQxWeb.DataSetControllerTest do
   end
 
   describe "index" do
+    @tag authentication: [role: "admin"]
     test "lists all data_sets", %{conn: conn} do
       [%{id: ds_id1}, %{id: ds_id2}, %{id: ds_id3}] =
         data_sets =
@@ -43,9 +44,19 @@ defmodule TdQxWeb.DataSetControllerTest do
                |> get(~p"/api/data_sets")
                |> json_response(200)
     end
+
+    @tag authentication: [role: "user"]
+    test "returns forbidden when requested by non admin user", %{conn: conn} do
+      ["data_set1", "data_set2", "data_set3"] |> Enum.map(&insert(:data_set, name: &1))
+
+      assert conn
+             |> get(~p"/api/data_sets")
+             |> json_response(:forbidden)
+    end
   end
 
   describe "show" do
+    @tag authentication: [role: "admin"]
     test "show data_sets with valid data", %{conn: conn} do
       %{id: ds_id} = data_structure = build(:data_structure)
       %{id: id} = insert(:data_set, data_structure_id: ds_id)
@@ -66,6 +77,24 @@ defmodule TdQxWeb.DataSetControllerTest do
                |> json_response(:ok)
     end
 
+    test "returns unauthenticated when no credentials are passed", %{conn: conn} do
+      %{id: id} = insert(:data_set)
+
+      assert conn
+             |> get(~p"/api/data_sets/#{id}")
+             |> response(:unauthorized)
+    end
+
+    @tag authentication: [role: "user"]
+    test "returns forbidden when requested by non admin user", %{conn: conn} do
+      %{id: id} = insert(:data_set)
+
+      assert conn
+             |> get(~p"/api/data_sets/#{id}")
+             |> json_response(:forbidden)
+    end
+
+    @tag authentication: [role: "admin"]
     test "show data_sets with invalid data", %{conn: conn} do
       %{id: id} = insert(:data_set)
       invalid_id = id + 1
@@ -77,6 +106,7 @@ defmodule TdQxWeb.DataSetControllerTest do
   end
 
   describe "create data_set" do
+    @tag authentication: [role: "admin"]
     test "create data_set when data is valid", %{conn: conn} do
       %{id: data_structure_id} = data_structure = build(:data_structure)
 
@@ -107,6 +137,21 @@ defmodule TdQxWeb.DataSetControllerTest do
                |> json_response(200)
     end
 
+    @tag authentication: [role: "user"]
+    test "returns forbidden when requested by non admin user", %{conn: conn} do
+      %{id: data_structure_id} = build(:data_structure)
+
+      data_set_attrs = %{
+        name: "foo",
+        data_structure_id: data_structure_id
+      }
+
+      assert conn
+             |> post(~p"/api/data_sets", data_set: data_set_attrs)
+             |> json_response(:forbidden)
+    end
+
+    @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn} do
       assert conn
              |> post(~p"/api/data_sets", data_set: @invalid_data_set_attrs)
@@ -115,6 +160,7 @@ defmodule TdQxWeb.DataSetControllerTest do
   end
 
   describe "update data_set" do
+    @tag authentication: [role: "admin"]
     test "update data_set when data is valid", %{conn: conn} do
       %{id: id, data_structure_id: ds_id} = data_set = insert(:data_set)
       data_structure = build(:data_structure, id: ds_id)
@@ -141,6 +187,20 @@ defmodule TdQxWeb.DataSetControllerTest do
                |> json_response(:ok)
     end
 
+    @tag authentication: [role: "user"]
+    test "returns forbidden when requested by non admin user", %{conn: conn} do
+      data_set = insert(:data_set)
+
+      update_attr = %{
+        name: "foo"
+      }
+
+      assert conn
+             |> put(~p"/api/data_sets/#{data_set}", data_set: update_attr)
+             |> json_response(:forbidden)
+    end
+
+    @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn} do
       data_set = insert(:data_set)
 
@@ -151,6 +211,7 @@ defmodule TdQxWeb.DataSetControllerTest do
   end
 
   describe "delete data_set" do
+    @tag authentication: [role: "admin"]
     test "deletes chosen data_set", %{conn: conn} do
       data_set = insert(:data_set)
 
@@ -163,6 +224,16 @@ defmodule TdQxWeb.DataSetControllerTest do
       end)
     end
 
+    @tag authentication: [role: "user"]
+    test "returns forbidden when requested by non admin user", %{conn: conn} do
+      data_set = insert(:data_set)
+
+      assert conn
+             |> delete(~p"/api/data_sets/#{data_set}")
+             |> response(:forbidden)
+    end
+
+    @tag authentication: [role: "admin"]
     test "deletes invalid data_set renders error", %{conn: conn} do
       %{id: id} = insert(:data_set)
       invalid_id = id + 1

@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.11.0] 2023-07-24
+
+### Added
+
+- [TD-5809] Authentication and Authorization for admins on DataSets
+
 ## [5.10.0] 2023-07-06
 
 ### Added

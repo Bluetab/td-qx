@@ -21,4 +21,11 @@ defmodule TdQxWeb.FallbackController do
     |> put_view(html: TdQxWeb.ErrorHTML, json: TdQxWeb.ErrorJSON)
     |> render(:"404")
   end
+
+  def call(conn, {:error, :forbidden}) do
+    conn
+    |> put_status(:forbidden)
+    |> put_view(html: TdQxWeb.ErrorHTML, json: TdQxWeb.ErrorJSON)
+    |> render(:"403")
+  end
 end
