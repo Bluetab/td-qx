@@ -7,26 +7,15 @@ defmodule TdQx.Application do
 
   @impl true
   def start(_type, _args) do
-    env = Application.get_env(:td_qx, :env)
-
-    children =
-      [
-        TdQx.Repo,
-        TdQxWeb.Endpoint
-      ] ++ workers(env)
+    children = [
+      TdQx.Repo,
+      TdQxWeb.Endpoint
+    ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: TdQx.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-
-  defp workers(:test), do: []
-
-  defp workers(_env) do
-    [
-      TdCluster.Supervisor
-    ]
   end
 
   # Tell Phoenix to update the endpoint configuration

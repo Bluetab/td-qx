@@ -11,6 +11,8 @@ defmodule TdQx.DataSets do
 
   require Logger
 
+  defdelegate authorize(action, user, params), to: __MODULE__.Policy
+
   @doc """
   Returns the list of data_sets.
 
