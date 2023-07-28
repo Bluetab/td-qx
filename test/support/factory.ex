@@ -6,6 +6,9 @@ defmodule TdQx.Factory do
   use ExMachina.Ecto, repo: TdQx.Repo
 
   alias TdQx.DataSets.DataSet
+  alias TdQx.Functions.Expression
+  alias TdQx.Functions.Function
+  alias TdQx.Functions.Param
 
   def user_factory do
     %{
@@ -34,6 +37,39 @@ defmodule TdQx.Factory do
       id: sequence(:id, & &1),
       system_id: sequence(:system_id, & &1),
       external_id: sequence(:data_structure_external_id, &"external_id_#{&1})")
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def function_factory(attrs) do
+    %Function{
+      name: "some name",
+      type: "boolean",
+      description: "some description",
+      params: [
+        build(:function_param)
+      ],
+      expression: build(:function_expression)
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def function_param_factory(attrs) do
+    %Param{
+      name: "some name",
+      type: "boolean",
+      description: "some description"
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def function_expression_factory(attrs) do
+    %Expression{
+      shape: "constant",
+      value: %{
+        type: "string",
+        value: "some value"
+      }
     }
     |> merge_attributes(attrs)
   end
