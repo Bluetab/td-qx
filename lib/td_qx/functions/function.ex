@@ -1,4 +1,7 @@
 defmodule TdQx.Functions.Function do
+  @moduledoc """
+  Ecto Schema module for Function
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -23,6 +26,8 @@ defmodule TdQx.Functions.Function do
     |> cast_embed(:expression, with: &Expression.changeset/2)
     |> validate_required([:name, :type])
     |> validate_type()
+
+    # |> dbg()
   end
 
   def validate_type(changeset) do

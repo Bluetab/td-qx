@@ -63,8 +63,7 @@ defmodule TdQx.MixProject do
       {:td_cache, git: "https://github.com/Bluetab/td-cache.git", tag: "5.9.0"},
       {:cors_plug, "~> 3.0"},
       {:ex_machina, "~> 2.7.0", only: :test},
-      {:mox, "~> 1.0", only: :test},
-      {:polymorphic_embed, "~> 3.0.5"}
+      {:mox, "~> 1.0", only: :test}
     ]
   end
 

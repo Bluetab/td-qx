@@ -161,6 +161,21 @@ defmodule TdQx.FunctionsTest do
       assert {:error, _} = Functions.create_function(valid_attrs)
     end
 
+    test "create_function/1 validates constant shape value" do
+      valid_attrs = %{
+        expression: %{
+          shape: "constant",
+          value: %{
+            type: "invalid_type"
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:error, _} = Functions.create_function(valid_attrs)
+    end
+
     test "create_function/1 creates valid shape constant" do
       valid_attrs = %{
         expression: %{
@@ -181,6 +196,125 @@ defmodule TdQx.FunctionsTest do
                value: %{
                  type: "boolean",
                  value: "true"
+               }
+             } = expression
+    end
+
+    test "create_function/1 validates field shape value" do
+      valid_attrs = %{
+        expression: %{
+          shape: "field",
+          value: %{
+            type: "invalid_type"
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:error, _} = Functions.create_function(valid_attrs)
+    end
+
+    test "create_function/1 creates valid shape field" do
+      valid_attrs = %{
+        expression: %{
+          shape: "field",
+          value: %{
+            type: "boolean",
+            name: "field1",
+            dataset: %{}
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
+
+      assert %Expression{
+               shape: "field",
+               value: %{
+                 type: "boolean",
+                 name: "field1",
+                 dataset: %{}
+               }
+             } = expression
+    end
+
+    test "create_function/1 validates function shape value" do
+      valid_attrs = %{
+        expression: %{
+          shape: "function",
+          value: %{
+            type: "invalid_type"
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:error, _} = Functions.create_function(valid_attrs)
+    end
+
+    test "create_function/1 creates valid shape function" do
+      valid_attrs = %{
+        expression: %{
+          shape: "function",
+          value: %{
+            type: "boolean",
+            name: "func1",
+            args: %{}
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
+
+      assert %Expression{
+               shape: "function",
+               value: %{
+                 type: "boolean",
+                 name: "func1",
+                 args: %{}
+               }
+             } = expression
+    end
+
+    test "create_function/1 validates param shape value" do
+      valid_attrs = %{
+        expression: %{
+          shape: "param",
+          value: %{
+            id: nil
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:error, _} = Functions.create_function(valid_attrs)
+    end
+
+    test "create_function/1 creates valid shape param" do
+      valid_attrs = %{
+        expression: %{
+          shape: "param",
+          value: %{
+            id: 1
+          }
+        },
+        name: "name",
+        type: "boolean"
+      }
+
+      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
+
+      assert %Expression{
+               shape: "param",
+               value: %{
+                 id: 1
                }
              } = expression
     end

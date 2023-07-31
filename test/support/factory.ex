@@ -67,8 +67,8 @@ defmodule TdQx.Factory do
     %Expression{
       shape: "constant",
       value: %{
-        type: "string",
-        value: "some value"
+        "type" => "string",
+        "value" => "some value"
       }
     }
     |> merge_attributes(attrs)
