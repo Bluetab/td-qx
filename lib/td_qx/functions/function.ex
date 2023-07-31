@@ -26,8 +26,7 @@ defmodule TdQx.Functions.Function do
     |> cast_embed(:expression, with: &Expression.changeset/2)
     |> validate_required([:name, :type])
     |> validate_type()
-
-    # |> dbg()
+    |> unique_constraint([:name, :type])
   end
 
   def validate_type(changeset) do

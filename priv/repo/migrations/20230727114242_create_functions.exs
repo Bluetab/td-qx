@@ -20,5 +20,7 @@ defmodule TdQx.Repo.Migrations.CreateFunctions do
 
       timestamps()
     end
+
+    create unique_index(:funcmixtions, [:name, :type])
   end
 end

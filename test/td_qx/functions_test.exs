@@ -52,6 +52,24 @@ defmodule TdQx.FunctionsTest do
       assert function.type == "boolean"
     end
 
+    test "create_function/1 will not allow to create a function with duplicated name and type" do
+      valid_attrs = %{
+        name: "some name",
+        type: "boolean"
+      }
+
+      assert {:ok, %Function{}} = Functions.create_function(valid_attrs)
+
+      assert {:error,
+              %{
+                errors: [
+                  name:
+                    {"has already been taken",
+                     [constraint: :unique, constraint_name: "functions_name_type_index"]}
+                ]
+              }} = Functions.create_function(valid_attrs)
+    end
+
     test "create_function/1 with invalid data returns error changeset" do
       invalid_attrs = %{
         description: nil,
