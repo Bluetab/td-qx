@@ -38,7 +38,7 @@ defmodule TdQxWeb.FunctionControllerTest do
   describe "index" do
     @tag authentication: [role: "admin"]
     test "lists all functions", %{conn: conn} do
-      conn = get(conn, ~p"/api/functions")
+      conn = get(conn, ~p"/api/quality_functions")
       assert json_response(conn, 200)["data"] == []
     end
 
@@ -47,7 +47,7 @@ defmodule TdQxWeb.FunctionControllerTest do
       ["func1", "func2", "func3"] |> Enum.map(&insert(:function, name: &1))
 
       assert conn
-             |> get(~p"/api/functions")
+             |> get(~p"/api/quality_functions")
              |> json_response(:forbidden)
     end
   end
@@ -63,7 +63,7 @@ defmodule TdQxWeb.FunctionControllerTest do
                }
              } =
                conn
-               |> get(~p"/api/functions/#{id}")
+               |> get(~p"/api/quality_functions/#{id}")
                |> json_response(:ok)
     end
 
@@ -73,7 +73,7 @@ defmodule TdQxWeb.FunctionControllerTest do
       invalid_id = id + 1
 
       assert_error_sent(:not_found, fn ->
-        get(conn, ~p"/api/functions/#{invalid_id}")
+        get(conn, ~p"/api/quality_functions/#{invalid_id}")
       end)
     end
 
@@ -82,7 +82,7 @@ defmodule TdQxWeb.FunctionControllerTest do
       %{id: id} = insert(:function)
 
       assert conn
-             |> get(~p"/api/functions/#{id}")
+             |> get(~p"/api/quality_functions/#{id}")
              |> json_response(:forbidden)
     end
   end
@@ -90,10 +90,10 @@ defmodule TdQxWeb.FunctionControllerTest do
   describe "create function" do
     @tag authentication: [role: "admin"]
     test "renders function when data is valid", %{conn: conn} do
-      conn = post(conn, ~p"/api/functions", function: @create_attrs)
+      conn = post(conn, ~p"/api/quality_functions", function: @create_attrs)
       assert %{"id" => id} = json_response(conn, 201)["data"]
 
-      conn = get(conn, ~p"/api/functions/#{id}")
+      conn = get(conn, ~p"/api/quality_functions/#{id}")
 
       assert %{
                "id" => ^id,
@@ -110,14 +110,14 @@ defmodule TdQxWeb.FunctionControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, ~p"/api/functions", function: @invalid_attrs)
+      conn = post(conn, ~p"/api/quality_functions", function: @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
 
     @tag authentication: [role: "user"]
     test "returns forbidden when requested by non admin user", %{conn: conn} do
       assert conn
-             |> post(~p"/api/functions", function: @create_attrs)
+             |> post(~p"/api/quality_functions", function: @create_attrs)
              |> json_response(:forbidden)
     end
   end
@@ -130,10 +130,10 @@ defmodule TdQxWeb.FunctionControllerTest do
       conn: conn,
       function: %Function{id: id} = function
     } do
-      conn = put(conn, ~p"/api/functions/#{function}", function: @update_attrs)
+      conn = put(conn, ~p"/api/quality_functions/#{function}", function: @update_attrs)
       assert %{"id" => ^id} = json_response(conn, 200)["data"]
 
-      conn = get(conn, ~p"/api/functions/#{id}")
+      conn = get(conn, ~p"/api/quality_functions/#{id}")
 
       assert %{
                "id" => ^id,
@@ -150,7 +150,7 @@ defmodule TdQxWeb.FunctionControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn, function: function} do
-      conn = put(conn, ~p"/api/functions/#{function}", function: @invalid_attrs)
+      conn = put(conn, ~p"/api/quality_functions/#{function}", function: @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
 
@@ -161,7 +161,7 @@ defmodule TdQxWeb.FunctionControllerTest do
       }
 
       assert conn
-             |> put(~p"/api/functions/#{function}", function: update_attr)
+             |> put(~p"/api/quality_functions/#{function}", function: update_attr)
              |> json_response(:forbidden)
     end
   end
@@ -171,18 +171,18 @@ defmodule TdQxWeb.FunctionControllerTest do
 
     @tag authentication: [role: "admin"]
     test "deletes chosen function", %{conn: conn, function: function} do
-      conn = delete(conn, ~p"/api/functions/#{function}")
+      conn = delete(conn, ~p"/api/quality_functions/#{function}")
       assert response(conn, 204)
 
       assert_error_sent 404, fn ->
-        get(conn, ~p"/api/functions/#{function}")
+        get(conn, ~p"/api/quality_functions/#{function}")
       end
     end
 
     @tag authentication: [role: "user"]
     test "returns forbidden when requested by non admin user", %{conn: conn, function: function} do
       assert conn
-             |> delete(~p"/api/functions/#{function}")
+             |> delete(~p"/api/quality_functions/#{function}")
              |> response(:forbidden)
     end
 
@@ -191,7 +191,7 @@ defmodule TdQxWeb.FunctionControllerTest do
       invalid_id = id + 1
 
       assert_error_sent(:not_found, fn ->
-        delete(conn, ~p"/api/functions/#{invalid_id}")
+        delete(conn, ~p"/api/quality_functions/#{invalid_id}")
       end)
     end
   end

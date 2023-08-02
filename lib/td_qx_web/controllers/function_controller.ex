@@ -20,7 +20,7 @@ defmodule TdQxWeb.FunctionController do
          {:ok, %Function{} = function} <- Functions.create_function(function_params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", ~p"/api/functions/#{function}")
+      |> put_resp_header("location", ~p"/api/quality_functions/#{function}")
       |> render(:show, function: function)
     end
   end
