@@ -14,13 +14,14 @@ defmodule TdQx.Repo.Migrations.CreateFunctions do
     create table(:functions) do
       add :name, :string
       add :type, :function_type
+      add :operator, :string
       add :description, :string
       add :params, {:array, :map}
       add :expression, :map
 
-      timestamps()
+      timestamps(type: :utc_datetime_usec)
     end
 
-    create unique_index(:funcmixtions, [:name, :type])
+    create unique_index(:functions, [:name, :type])
   end
 end

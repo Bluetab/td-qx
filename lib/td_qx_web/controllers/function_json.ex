@@ -22,6 +22,7 @@ defmodule TdQxWeb.FunctionJSON do
       id: function.id,
       name: function.name,
       type: function.type,
+      operator: function.operator,
       description: function.description,
       params: ParamJSON.embed_many(function),
       expression: ExpressionJSON.embed_one(function)

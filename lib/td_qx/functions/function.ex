@@ -11,17 +11,18 @@ defmodule TdQx.Functions.Function do
   schema "functions" do
     field :name, :string
     field :type, :string
+    field :operator, :string
     field :description, :string
     embeds_many(:params, Param, on_replace: :delete)
     embeds_one(:expression, Expression, on_replace: :delete)
 
-    timestamps()
+    timestamps(type: :utc_datetime_usec)
   end
 
   @doc false
   def changeset(function, attrs) do
     function
-    |> cast(attrs, [:name, :type, :description])
+    |> cast(attrs, [:name, :type, :operator, :description])
     |> cast_embed(:params, with: &Param.changeset/2)
     |> cast_embed(:expression, with: &Expression.changeset/2)
     |> validate_required([:name, :type])

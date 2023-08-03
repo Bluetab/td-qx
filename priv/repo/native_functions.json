@@ -1,0 +1,170 @@
+[
+  {
+    "name": "is_empty",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [{ "name": "field", "type": "any" }]
+  },
+  {
+    "name": "length",
+    "type": "numeric",
+    "description": "length of field",
+    "params": [
+      { "name": "field", "type": "string", "description": "campo a medir" }
+    ]
+  },
+  {
+    "name": "match_regex",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [
+      {
+        "name": "field",
+        "type": "string",
+        "description": "Campo sobre el que aplicar la expresión regular"
+      },
+      { "name": "regex", "type": "string", "description": "Expresión regular" }
+    ]
+  },
+  {
+    "name": "uppercase",
+    "type": "string",
+    "params": [{ "name": "text", "type": "string" }]
+  },
+  {
+    "name": "not",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [{ "name": "value", "type": "boolean" }]
+  },
+  {
+    "name": "or",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [
+      { "name": "arg1", "type": "boolean" },
+      { "name": "arg2", "type": "boolean" }
+    ]
+  },
+  {
+    "name": "and",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [
+      { "name": "arg1", "type": "boolean" },
+      { "name": "arg2", "type": "boolean" }
+    ]
+  },
+  {
+    "name": "concat",
+    "type": "string",
+    "params": [
+      {
+        "name": "separator",
+        "type": "string",
+        "defaultValue": { "type": "string", "constant": "SEP POR DEFECTO" }
+      },
+      { "name": "fields", "type": "string", "array": true }
+    ]
+  },
+  {
+    "name": "not_empty",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [{ "name": "field", "type": "any" }],
+    "expression": {
+      "shape": "function",
+      "value": {
+        "name": "not",
+        "type": "boolean",
+        "args": {
+          "value": {
+            "name": "is_empty",
+            "type": "boolean",
+            "args": {
+              "field": { "name": "field", "type": "any", "ref": "param" }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "field_value",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [{ "name": "field", "type": "boolean" }]
+  },
+  {
+    "name": "constant",
+    "type": "boolean",
+    "description": "some boolean function description",
+    "params": [{ "name": "value", "type": "boolean" }]
+  },
+  {
+    "name": "coalesce",
+    "type": "any",
+    "params": [],
+    "condition": { "name": "not", "args": { "value": { "name": "TRUE" } } }
+  },
+  {
+    "name": "eq",
+    "type": "boolean",
+    "operator": "=",
+    "description": "equals",
+    "params": [
+      { "name": "arg1", "type": "any" },
+      { "name": "arg2", "type": "any" }
+    ]
+  },
+  {
+    "name": "neq",
+    "type": "boolean",
+    "operator": "!=",
+    "description": "not equal",
+    "params": [
+      { "name": "arg1", "type": "any" },
+      { "name": "arg2", "type": "any" }
+    ]
+  },
+  {
+    "name": "gt",
+    "type": "boolean",
+    "operator": ">",
+    "description": "greater than",
+    "params": [
+      { "name": "arg1", "type": "any" },
+      { "name": "arg2", "type": "any" }
+    ]
+  },
+  {
+    "name": "gte",
+    "type": "boolean",
+    "operator": ">=",
+    "description": "greater than or equals",
+    "params": [
+      { "name": "arg1", "type": "any" },
+      { "name": "arg2", "type": "any" }
+    ]
+  },
+  {
+    "name": "lt",
+    "type": "boolean",
+    "operator": "<",
+    "description": "less than",
+    "params": [
+      { "name": "arg1", "type": "any" },
+      { "name": "arg2", "type": "any" }
+    ]
+  },
+  {
+    "name": "lte",
+    "type": "boolean",
+    "operator": "<=",
+    "description": "less than or equals",
+    "params": [
+      { "name": "arg1", "type": "any" },
+      { "name": "arg2", "type": "any" }
+    ]
+  }
+]

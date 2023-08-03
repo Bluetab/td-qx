@@ -8,6 +8,8 @@ defmodule TdQx.Functions do
 
   alias TdQx.Functions.Function
 
+  require Logger
+
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
   @doc """
@@ -103,4 +105,46 @@ defmodule TdQx.Functions do
   def change_function(%Function{} = function, attrs \\ %{}) do
     Function.changeset(function, attrs)
   end
+
+  def load_from_file!(path) do
+    if File.regular?(path) do
+      ts = DateTime.utc_now()
+
+      functions =
+        path
+        |> File.read!()
+        |> Jason.decode!()
+        |> Enum.map(fn function ->
+          %{
+            name: Map.get(function, "name"),
+            type: Map.get(function, "type"),
+            operator: Map.get(function, "operator"),
+            description: Map.get(function, "description"),
+            params: parse_params(function),
+            inserted_at: ts,
+            updated_at: ts
+          }
+        end)
+
+      case Repo.insert_all(Function, functions, on_conflict: :nothing) do
+        {0, _} -> Logger.info("No new functions'")
+        {count, _} -> Logger.info("Loaded #{count} functions")
+      end
+    else
+      Logger.warn("File #{path} does not exist")
+    end
+  end
+
+  defp parse_params(%{"params" => params}) do
+    params
+    |> Enum.map(fn param ->
+      %TdQx.Functions.Param{
+        name: Map.get(param, "name"),
+        type: Map.get(param, "type"),
+        description: Map.get(param, "description")
+      }
+    end)
+  end
+
+  defp parse_params(_), do: []
 end

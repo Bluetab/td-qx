@@ -6,7 +6,7 @@ defmodule TdQx.Repo.Migrations.CreateDataSets do
       add :name, :string
       add :data_structure_id, :bigint
 
-      timestamps()
+      timestamps(type: :utc_datetime_usec)
     end
   end
 end
