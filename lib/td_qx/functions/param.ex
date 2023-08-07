@@ -10,6 +10,7 @@ defmodule TdQx.Functions.Param do
 
   @primary_key false
   embedded_schema do
+    field(:id, :integer)
     field(:name, :string)
     field(:type, :string)
     field(:description, :string)
@@ -17,8 +18,8 @@ defmodule TdQx.Functions.Param do
 
   def changeset(%__MODULE__{} = struct, %{} = params) do
     struct
-    |> cast(params, [:name, :type, :description])
-    |> validate_required([:name, :type])
+    |> cast(params, [:id, :name, :type, :description])
+    |> validate_required([:id, :name, :type])
     |> Function.validate_type()
   end
 end

@@ -22,7 +22,9 @@ defmodule TdQx.Functions do
 
   """
   def list_functions do
-    Repo.all(Function)
+    Function
+    |> order_by([f], f.id)
+    |> Repo.all()
   end
 
   @doc """

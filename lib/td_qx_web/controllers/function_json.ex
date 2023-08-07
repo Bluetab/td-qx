@@ -56,6 +56,7 @@ defmodule TdQxWeb.ParamJSON do
 
   def data(%Param{} = param) do
     %{
+      id: param.id,
       name: param.name,
       type: param.type,
       description: param.description
