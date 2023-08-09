@@ -45,9 +45,9 @@ defmodule TdQx.FunctionsTest do
 
       assert function.name == "some name"
 
-      assert function.params == [
+      assert [
                %Param{name: "param1", type: "string", description: nil}
-             ]
+             ] = function.params
 
       assert function.type == "boolean"
     end
@@ -132,9 +132,9 @@ defmodule TdQx.FunctionsTest do
 
       assert function.name == "some updated name"
 
-      assert function.params == [
+      assert [
                %Param{name: "param1", type: "string", description: nil}
-             ]
+             ] = function.params
 
       assert function.type == "string"
     end
