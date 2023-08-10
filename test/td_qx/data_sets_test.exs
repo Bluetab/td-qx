@@ -12,8 +12,7 @@ defmodule TdQx.DataSetsTest do
 
     test "list_data_sets/0 returns all data_sets enriched" do
       [%{id: ds_id_0} = ds0, %{id: ds_id_1} = ds1, %{id: ds_id_2} = ds2] =
-        data_structures =
-        Enum.map(1..3, fn _ -> build(:data_structure) end)
+        data_structures = Enum.map(1..3, fn _ -> build(:data_structure) end)
 
       [
         %{id: dset_id_0, name: dset_name_0},
