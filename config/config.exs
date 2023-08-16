@@ -40,6 +40,15 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :td_qx, TdQx.Scheduler,
+  jobs: [
+    [
+      schedule: "@reboot",
+      task: {TdQx.Functions, :load_from_file!, ["priv/repo/native_functions.json"]},
+      run_strategy: Quantum.RunStrategy.Local
+    ]
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.12.0] 2023-06-16
+
+### Added
+
+- [TD-5921] Support for Functions
+
 ## [5.11.0] 2023-07-24
 
 ### Added

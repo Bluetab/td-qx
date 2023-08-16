@@ -9,7 +9,8 @@ defmodule TdQx.Application do
   def start(_type, _args) do
     children = [
       TdQx.Repo,
-      TdQxWeb.Endpoint
+      TdQxWeb.Endpoint,
+      TdQx.Scheduler
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
