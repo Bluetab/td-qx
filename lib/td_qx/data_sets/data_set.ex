@@ -11,7 +11,7 @@ defmodule TdQx.DataSets.DataSet do
     field :data_structure_id, :integer
     field :data_structure, :map, virtual: true
 
-    timestamps()
+    timestamps(type: :utc_datetime_usec)
   end
 
   @doc false
