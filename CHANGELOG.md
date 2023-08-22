@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-5994] Added initial native functions
+
 ## [5.12.0] 2023-06-16
 
 ### Added

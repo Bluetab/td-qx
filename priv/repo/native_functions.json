@@ -1,46 +1,12 @@
 [
   {
-    "name": "is_empty",
-    "type": "boolean",
-    "description": "some boolean function description",
-    "params": [{ "name": "field", "type": "any" }]
-  },
-  {
-    "name": "length",
-    "type": "numeric",
-    "description": "length of field",
-    "params": [
-      { "name": "field", "type": "string", "description": "campo a medir" }
-    ]
-  },
-  {
-    "name": "match_regex",
-    "type": "boolean",
-    "description": "some boolean function description",
-    "params": [
-      {
-        "name": "field",
-        "type": "string",
-        "description": "Campo sobre el que aplicar la expresión regular"
-      },
-      { "name": "regex", "type": "string", "description": "Expresión regular" }
-    ]
-  },
-  {
-    "name": "uppercase",
-    "type": "string",
-    "params": [{ "name": "text", "type": "string" }]
-  },
-  {
     "name": "not",
     "type": "boolean",
-    "description": "some boolean function description",
     "params": [{ "name": "value", "type": "boolean" }]
   },
   {
     "name": "or",
     "type": "boolean",
-    "description": "some boolean function description",
     "params": [
       { "name": "arg1", "type": "boolean" },
       { "name": "arg2", "type": "boolean" }
@@ -49,63 +15,10 @@
   {
     "name": "and",
     "type": "boolean",
-    "description": "some boolean function description",
     "params": [
       { "name": "arg1", "type": "boolean" },
       { "name": "arg2", "type": "boolean" }
     ]
-  },
-  {
-    "name": "concat",
-    "type": "string",
-    "params": [
-      {
-        "name": "separator",
-        "type": "string",
-        "defaultValue": { "type": "string", "constant": "SEP POR DEFECTO" }
-      },
-      { "name": "fields", "type": "string", "array": true }
-    ]
-  },
-  {
-    "name": "not_empty",
-    "type": "boolean",
-    "description": "some boolean function description",
-    "params": [{ "name": "field", "type": "any" }],
-    "expression": {
-      "shape": "function",
-      "value": {
-        "name": "not",
-        "type": "boolean",
-        "args": {
-          "value": {
-            "name": "is_empty",
-            "type": "boolean",
-            "args": {
-              "field": { "name": "field", "type": "any", "ref": "param" }
-            }
-          }
-        }
-      }
-    }
-  },
-  {
-    "name": "field_value",
-    "type": "boolean",
-    "description": "some boolean function description",
-    "params": [{ "name": "field", "type": "boolean" }]
-  },
-  {
-    "name": "constant",
-    "type": "boolean",
-    "description": "some boolean function description",
-    "params": [{ "name": "value", "type": "boolean" }]
-  },
-  {
-    "name": "coalesce",
-    "type": "any",
-    "params": [],
-    "condition": { "name": "not", "args": { "value": { "name": "TRUE" } } }
   },
   {
     "name": "eq",
@@ -165,6 +78,115 @@
     "params": [
       { "name": "arg1", "type": "any" },
       { "name": "arg2", "type": "any" }
+    ]
+  },
+  {
+    "name": "empty",
+    "type": "boolean",
+    "params": [{ "name": "value", "type": "any" }]
+  },
+  {
+    "name": "to_string",
+    "type": "string",
+    "params": [{ "name": "value", "type": "any" }]
+  },
+  {
+    "name": "substring",
+    "type": "string",
+    "params": [
+      { "name": "value", "type": "string" },
+      { "name": "start", "type": "numeric" },
+      { "name": "end", "type": "numeric" }
+    ]
+  },
+  {
+    "name": "uppercase",
+    "type": "string",
+    "description": "Converts string to uppercase",
+    "params": [{ "name": "field", "type": "string" }]
+  },
+  {
+    "name": "lowercase",
+    "type": "string",
+    "description": "Converts string to lowercase",
+    "params": [{ "name": "field", "type": "string" }]
+  },
+  {
+    "name": "concat",
+    "type": "string",
+    "params": [
+      { "name": "arg1", "type": "string" },
+      { "name": "arg2", "type": "string" }
+    ]
+  },
+  {
+    "name": "contains",
+    "type": "boolean",
+    "params": [
+      { "name": "value", "type": "string" },
+      { "name": "contains", "type": "string" }
+    ]
+  },
+  {
+    "name": "starts_with",
+    "type": "boolean",
+    "params": [
+      { "name": "value", "type": "string" },
+      { "name": "start_string", "type": "string" }
+    ]
+  },
+  {
+    "name": "ends_with",
+    "type": "boolean",
+    "params": [
+      { "name": "value", "type": "string" },
+      { "name": "end_string", "type": "string" }
+    ]
+  },
+  {
+    "name": "match_regex",
+    "type": "boolean",
+    "description": "Checks if string matches given regular expression",
+    "params": [
+      {
+        "name": "value",
+        "type": "string"
+      },
+      { "name": "regex", "type": "string", "description": "Regular expression" }
+    ]
+  },
+  {
+    "name": "length",
+    "type": "numeric",
+    "description": "Character count of a string",
+    "params": [{ "name": "field", "type": "string" }]
+  },
+  {
+    "name": "cast_as_date",
+    "type": "date",
+    "params": [
+      { "name": "value", "type": "any" },
+      { "name": "format", "type": "string" }
+    ]
+  },
+  {
+    "name": "cast_as_timestamp",
+    "type": "timestamp",
+    "params": [{ "name": "value", "type": "string" }]
+  },
+  {
+    "name": "between",
+    "type": "boolean",
+    "params": [
+      {
+        "name": "value",
+        "type": "numeric"
+      },
+      {
+        "name": "start_number",
+        "type": "numeric"
+      },
+      { "name": "end_number", "type": "numeric" }
     ]
   }
 ]
