@@ -68,6 +68,58 @@ defmodule TdQxWeb.FunctionControllerTest do
     end
 
     @tag authentication: [role: "admin"]
+    test "show valid args data for function with function expression", %{conn: conn} do
+      insert(:function,
+        name: "func1",
+        type: "boolean",
+        params: [
+          build(:function_param, name: "param1", type: "boolean")
+        ]
+      )
+
+      %{id: id} =
+        insert(:function,
+          expression:
+            build(:expression,
+              shape: "function",
+              value:
+                build(:expression_value,
+                  function:
+                    build(:ev_function,
+                      name: "func1",
+                      type: "boolean",
+                      args: [
+                        build(:ev_function_arg, name: "param1")
+                      ]
+                    )
+                )
+            )
+        )
+
+      assert %{
+               "data" => %{
+                 "id" => ^id,
+                 "expression" => %{
+                   "shape" => "function",
+                   "value" => %{
+                     "args" => %{
+                       "param1" => %{
+                         "shape" => "constant",
+                         "value" => %{"type" => "string", "value" => _}
+                       }
+                     },
+                     "name" => "func1",
+                     "type" => "boolean"
+                   }
+                 }
+               }
+             } =
+               conn
+               |> get(~p"/api/quality_functions/#{id}")
+               |> json_response(:ok)
+    end
+
+    @tag authentication: [role: "admin"]
     test "show function with invalid data", %{conn: conn} do
       %{id: id} = insert(:function)
       invalid_id = id + 1
@@ -105,7 +157,7 @@ defmodule TdQxWeb.FunctionControllerTest do
                "name" => "some name",
                "params" => [%{"description" => nil, "name" => "param1", "type" => "string"}],
                "type" => "string"
-             } = json_response(conn, 200)["data"]
+             } = json_response(conn, :ok)["data"]
     end
 
     @tag authentication: [role: "admin"]
@@ -131,7 +183,7 @@ defmodule TdQxWeb.FunctionControllerTest do
       function: %Function{id: id} = function
     } do
       conn = put(conn, ~p"/api/quality_functions/#{function}", function: @update_attrs)
-      assert %{"id" => ^id} = json_response(conn, 200)["data"]
+      assert %{"id" => ^id} = json_response(conn, :ok)["data"]
 
       conn = get(conn, ~p"/api/quality_functions/#{id}")
 
@@ -145,13 +197,13 @@ defmodule TdQxWeb.FunctionControllerTest do
                "name" => "some updated name",
                "params" => [%{"description" => nil, "name" => "param2", "type" => "boolean"}],
                "type" => "boolean"
-             } = json_response(conn, 200)["data"]
+             } = json_response(conn, :ok)["data"]
     end
 
     @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn, function: function} do
       conn = put(conn, ~p"/api/quality_functions/#{function}", function: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
+      assert json_response(conn, :unprocessable_entity)["errors"] != %{}
     end
 
     @tag authentication: [role: "user"]

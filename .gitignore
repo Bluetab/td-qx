@@ -26,3 +26,4 @@ erl_crash.dump
 td_qx-*.tar
 
 .tool-versions
+.DS_Store
