@@ -1,5 +1,5 @@
-defmodule TdQx.DataSets.Policy do
-  @moduledoc "Authorization rules for TdQx.DataSets"
+defmodule TdQx.DataViews.Policy do
+  @moduledoc "Authorization rules for TdQx.DataViews"
 
   @behaviour Bodyguard.Policy
 

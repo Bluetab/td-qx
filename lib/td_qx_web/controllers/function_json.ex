@@ -22,25 +22,11 @@ defmodule TdQxWeb.FunctionJSON do
       id: function.id,
       name: function.name,
       type: function.type,
+      class: function.class,
       operator: function.operator,
       description: function.description,
       params: ParamJSON.embed_many(function),
       expression: ExpressionJSON.embed_one(function)
-    }
-  end
-end
-
-defmodule TdQxWeb.ExpressionJSON do
-  alias TdQx.Functions.Expression
-  alias TdQx.Functions.Function
-
-  def embed_one(%Function{expression: %Expression{} = expression}), do: data(expression)
-  def embed_one(_), do: nil
-
-  defp data(%Expression{} = expression) do
-    %{
-      shape: expression.shape,
-      value: expression.value
     }
   end
 end

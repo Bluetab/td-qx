@@ -1,8 +1,8 @@
 defmodule TdQx.FunctionsTest do
   use TdQx.DataCase
 
+  alias TdQx.Expressions.Expression
   alias TdQx.Functions
-  alias TdQx.Functions.Expression
   alias TdQx.Functions.Function
   alias TdQx.Functions.Param
 
@@ -35,13 +35,81 @@ defmodule TdQx.FunctionsTest do
       assert {:ok, %Function{} = function} = Functions.create_function(valid_attrs)
       assert function.description == "some description"
 
-      assert function.expression == %Expression{
+      assert %Expression{
                shape: "constant",
                value: %{
-                 type: "string",
-                 value: "some expression"
+                 constant: %{
+                   type: "string",
+                   value: "some expression"
+                 }
                }
-             }
+             } = function.expression
+
+      assert function.name == "some name"
+
+      assert [
+               %Param{name: "param1", type: "string", description: nil}
+             ] = function.params
+
+      assert function.type == "boolean"
+    end
+
+    test "create_function/1 with valid function shape expression returns correct args format" do
+      insert(:function,
+        name: "func1",
+        type: "boolean",
+        params: [
+          build(:function_param, name: "param1", type: "boolean")
+        ]
+      )
+
+      valid_attrs = %{
+        description: "some description",
+        expression: %{
+          shape: "function",
+          value: %{
+            name: "func1",
+            type: "boolean",
+            args: %{
+              param1: %{
+                shape: "constant",
+                value: %{
+                  type: "boolean",
+                  value: "true"
+                }
+              }
+            }
+          }
+        },
+        name: "some name",
+        params: [%{id: 1, name: "param1", type: "string"}],
+        type: "boolean"
+      }
+
+      assert {:ok, %Function{} = function} = Functions.create_function(valid_attrs)
+
+      assert function.description == "some description"
+
+      assert %Expression{
+               shape: "function",
+               value: %{
+                 function: %{
+                   name: "func1",
+                   type: "boolean",
+                   args: [
+                     %{
+                       name: "param1",
+                       expression: %{
+                         shape: "constant",
+                         value: %{
+                           constant: %{type: "boolean", value: "true"}
+                         }
+                       }
+                     }
+                   ]
+                 }
+               }
+             } = function.expression
 
       assert function.name == "some name"
 
@@ -96,7 +164,7 @@ defmodule TdQx.FunctionsTest do
                     {"is invalid",
                      [
                        validation: :inclusion,
-                       enum: ["boolean", "string", "numeric", "date", "timestamp", "any"]
+                       enum: ["boolean", "string", "number", "date", "timestamp", "any"]
                      ]}
                 ]
               }} = Functions.create_function(valid_attrs)
@@ -122,13 +190,15 @@ defmodule TdQx.FunctionsTest do
       assert {:ok, %Function{} = function} = Functions.update_function(function, update_attrs)
       assert function.description == "some updated description"
 
-      assert function.expression == %Expression{
+      assert %Expression{
                shape: "constant",
                value: %{
-                 type: "string",
-                 value: "some expression"
+                 constant: %{
+                   type: "string",
+                   value: "some expression"
+                 }
                }
-             }
+             } = function.expression
 
       assert function.name == "some updated name"
 
@@ -162,179 +232,6 @@ defmodule TdQx.FunctionsTest do
     test "change_function/1 returns a function changeset" do
       function = insert(:function)
       assert %Ecto.Changeset{} = Functions.change_function(function)
-    end
-  end
-
-  describe "functions expression" do
-    test "create_function/1 validates expression shape" do
-      valid_attrs = %{
-        expression: %{
-          shape: "invalid_shape",
-          value: %{}
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:error, _} = Functions.create_function(valid_attrs)
-    end
-
-    test "create_function/1 validates constant shape value" do
-      valid_attrs = %{
-        expression: %{
-          shape: "constant",
-          value: %{
-            type: "invalid_type"
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:error, _} = Functions.create_function(valid_attrs)
-    end
-
-    test "create_function/1 creates valid shape constant" do
-      valid_attrs = %{
-        expression: %{
-          shape: "constant",
-          value: %{
-            type: "boolean",
-            value: "true"
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
-
-      assert %Expression{
-               shape: "constant",
-               value: %{
-                 type: "boolean",
-                 value: "true"
-               }
-             } = expression
-    end
-
-    test "create_function/1 validates field shape value" do
-      valid_attrs = %{
-        expression: %{
-          shape: "field",
-          value: %{
-            type: "invalid_type"
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:error, _} = Functions.create_function(valid_attrs)
-    end
-
-    test "create_function/1 creates valid shape field" do
-      valid_attrs = %{
-        expression: %{
-          shape: "field",
-          value: %{
-            type: "boolean",
-            name: "field1",
-            dataset: %{}
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
-
-      assert %Expression{
-               shape: "field",
-               value: %{
-                 type: "boolean",
-                 name: "field1",
-                 dataset: %{}
-               }
-             } = expression
-    end
-
-    test "create_function/1 validates function shape value" do
-      valid_attrs = %{
-        expression: %{
-          shape: "function",
-          value: %{
-            type: "invalid_type"
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:error, _} = Functions.create_function(valid_attrs)
-    end
-
-    test "create_function/1 creates valid shape function" do
-      valid_attrs = %{
-        expression: %{
-          shape: "function",
-          value: %{
-            type: "boolean",
-            name: "func1",
-            args: %{}
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
-
-      assert %Expression{
-               shape: "function",
-               value: %{
-                 type: "boolean",
-                 name: "func1",
-                 args: %{}
-               }
-             } = expression
-    end
-
-    test "create_function/1 validates param shape value" do
-      valid_attrs = %{
-        expression: %{
-          shape: "param",
-          value: %{
-            id: nil
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:error, _} = Functions.create_function(valid_attrs)
-    end
-
-    test "create_function/1 creates valid shape param" do
-      valid_attrs = %{
-        expression: %{
-          shape: "param",
-          value: %{
-            id: 1
-          }
-        },
-        name: "name",
-        type: "boolean"
-      }
-
-      assert {:ok, %Function{expression: expression}} = Functions.create_function(valid_attrs)
-
-      assert %Expression{
-               shape: "param",
-               value: %{
-                 id: 1
-               }
-             } = expression
     end
   end
 end

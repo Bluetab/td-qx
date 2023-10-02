@@ -28,10 +28,6 @@ defmodule TdQx.DataCase do
       import TdQx.DataCase
 
       import TdQx.Factory
-
-      import ClusterHandlerHelper
-
-      # alias TdQxWeb.Router.Helpers, as: Routes
     end
   end
 
