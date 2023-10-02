@@ -1,0 +1,20 @@
+defmodule TdQx.Expressions.ExpressionValues.Param do
+  @moduledoc """
+  Ecto Schema module for ExpressionValue of shape param
+  """
+
+  use Ecto.Schema
+
+  import Ecto.Changeset
+
+  @primary_key false
+  embedded_schema do
+    field :id, :integer
+  end
+
+  def changeset(%__MODULE__{} = struct, %{} = params) do
+    struct
+    |> cast(params, [:id])
+    |> validate_required([:id])
+  end
+end

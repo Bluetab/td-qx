@@ -19,7 +19,7 @@ defmodule TdQxWeb.Router do
   scope "/api", TdQxWeb do
     pipe_through [:api, :api_auth]
 
-    resources "/data_sets", DataSetController, except: [:new, :edit]
+    resources "/data_views", DataViewController, except: [:new, :edit]
     resources "/quality_functions", FunctionController, except: [:new, :edit]
   end
 end

@@ -44,6 +44,22 @@ defmodule TdQx.Functions do
   def get_function!(id), do: Repo.get!(Function, id)
 
   @doc """
+  Gets a single function by name and type.
+
+  Raises `Ecto.NoResultsError` if the Function does not exist.
+
+  ## Examples
+
+      iex> get_function_by_name_type!("name", "boolean")
+      %Function{}
+
+      iex> get_function_by_name_type!("inexistent", "boolean")
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_function_by_name_type(name, type), do: Repo.get_by(Function, name: name, type: type)
+
+  @doc """
   Creates a function.
 
   ## Examples
@@ -120,6 +136,7 @@ defmodule TdQx.Functions do
           %{
             name: Map.get(function, "name"),
             type: Map.get(function, "type"),
+            class: Map.get(function, "class"),
             operator: Map.get(function, "operator"),
             description: Map.get(function, "description"),
             params: parse_params(function),

@@ -32,13 +32,6 @@ defmodule TdQxWeb.ConnCase do
       import TdQxWeb.ConnCase
 
       import TdQx.Factory
-
-      # Import Mox for Mock TdCluster.ClusterHandler
-
-      import Mox
-      import ClusterHandlerHelper
-
-      # alias TdQxWeb.Router.Helpers, as: Routes
     end
   end
 

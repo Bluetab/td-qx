@@ -6,7 +6,7 @@ defmodule TdQx.MixProject do
       app: :td_qx,
       version:
         case System.get_env("APP_VERSION") do
-          nil -> "5.13.0-local"
+          nil -> "5.15.0-local"
           v -> v
         end,
       elixir: "~> 1.14",
@@ -60,7 +60,7 @@ defmodule TdQx.MixProject do
       {:bodyguard, "~> 2.4"},
       {:quantum, "~> 3.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:td_cluster, git: "https://github.com/Bluetab/td-cluster.git", tag: "5.11.0"},
+      {:td_cluster, git: "https://github.com/Bluetab/td-cluster.git", tag: "5.15.0"},
       {:td_cache, git: "https://github.com/Bluetab/td-cache.git", tag: "5.9.0"},
       {:cors_plug, "~> 3.0"},
       {:ex_machina, "~> 2.7.0", only: :test},

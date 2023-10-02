@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.15.0] 2023-10-02
+
+### Added
+
+- [TD-5947] Support for DataViews
+
 ## [5.13.0] 2023-09-05
 
 ### Added
@@ -16,13 +22,13 @@
 
 ### Added
 
-- [TD-5809] Authentication and Authorization for admins on DataSets
+- [TD-5809] Authentication and Authorization for admins on DataViews
 
 ## [5.10.0] 2023-07-06
 
 ### Added
 
-- [TD-5808] API of enriched DataSets with data structures brought from the dd service
+- [TD-5808] API of enriched DataViews with data structures brought from the dd service
 
 ### Changed
 

@@ -95,8 +95,8 @@
     "type": "string",
     "params": [
       { "name": "value", "type": "string" },
-      { "name": "start", "type": "numeric" },
-      { "name": "end", "type": "numeric" }
+      { "name": "start", "type": "number" },
+      { "name": "end", "type": "number" }
     ]
   },
   {
@@ -157,7 +157,7 @@
   },
   {
     "name": "length",
-    "type": "numeric",
+    "type": "number",
     "description": "Character count of a string",
     "params": [{ "name": "field", "type": "string" }]
   },
@@ -180,13 +180,37 @@
     "params": [
       {
         "name": "value",
-        "type": "numeric"
+        "type": "number"
       },
       {
         "name": "start_number",
-        "type": "numeric"
+        "type": "number"
       },
-      { "name": "end_number", "type": "numeric" }
+      { "name": "end_number", "type": "number" }
     ]
+  },
+  {
+    "name": "min",
+    "type": "any",
+    "class": "aggregator",
+    "params": [{ "name": "expression", "type": "any" }]
+  },
+  {
+    "name": "max",
+    "type": "any",
+    "class": "aggregator",
+    "params": [{ "name": "expression", "type": "any" }]
+  },
+  {
+    "name": "avg",
+    "type": "any",
+    "class": "aggregator",
+    "params": [{ "name": "expression", "type": "any" }]
+  },
+  {
+    "name": "sum",
+    "type": "any",
+    "class": "aggregator",
+    "params": [{ "name": "expression", "type": "any" }]
   }
 ]

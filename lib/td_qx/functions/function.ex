@@ -5,14 +5,17 @@ defmodule TdQx.Functions.Function do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias TdQx.Functions.Expression
+  alias TdQx.Expressions.Expression
   alias TdQx.Functions.Param
 
+  @valid_types ~w|boolean string number date timestamp any|
+
   schema "functions" do
-    field :name, :string
-    field :type, :string
-    field :operator, :string
-    field :description, :string
+    field(:name, :string)
+    field(:type, :string)
+    field(:class, :string)
+    field(:operator, :string)
+    field(:description, :string)
     embeds_many(:params, Param, on_replace: :delete)
     embeds_one(:expression, Expression, on_replace: :delete)
 
@@ -22,7 +25,7 @@ defmodule TdQx.Functions.Function do
   @doc false
   def changeset(function, attrs) do
     function
-    |> cast(attrs, [:name, :type, :operator, :description])
+    |> cast(attrs, [:name, :type, :class, :operator, :description])
     |> cast_embed(:params, with: &Param.changeset/2)
     |> cast_embed(:expression, with: &Expression.changeset/2)
     |> validate_required([:name, :type])
@@ -31,6 +34,6 @@ defmodule TdQx.Functions.Function do
   end
 
   def validate_type(changeset) do
-    validate_inclusion(changeset, :type, ~w|boolean string numeric date timestamp any|)
+    validate_inclusion(changeset, :type, @valid_types)
   end
 end
