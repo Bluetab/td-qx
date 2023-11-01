@@ -43,7 +43,7 @@ if config_env() == :prod do
     port: System.get_env("REDIS_PORT", "6379") |> String.to_integer(),
     password: System.get_env("REDIS_PASSWORD")
 
-  config :td_dd, TdCore.Search.Cluster, url: System.fetch_env!("ES_URL")
+  config :td_core, TdCore.Search.Cluster, url: System.fetch_env!("ES_URL")
 
   with username when not is_nil(username) <- System.get_env("ES_USERNAME"),
        password when not is_nil(password) <- System.get_env("ES_PASSWORD") do
