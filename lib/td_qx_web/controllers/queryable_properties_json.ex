@@ -36,7 +36,7 @@ defmodule TdQxWeb.ResourceJSON do
   def embed_one(%{resource: %Resource{} = resource}), do: data(resource)
   def embed_one(%Resource{} = resource), do: data(resource)
 
-  def embed_one(_), do: []
+  def embed_one(_), do: nil
 
   def data(%Resource{} = resource) do
     %{
