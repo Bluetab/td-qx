@@ -1,8 +1,7 @@
 ## TODO:
 
-[ ] Configurar el td-core para que esté bloqueado el push a main
-[ ] añadir al td-k8s
-[ ] añadir el guardian key al td-k8s
+[x] Configurar el td-core para que esté bloqueado el push a main
+[x] añadir elastic al td-k8s de td-qx
 [x] user with any permission to create should see create new button
 [x] user witout any create, shouldnt view create
 [x] actions should do "all domains" permissions for each action
@@ -25,6 +24,7 @@
 [ ] permite guardar sin seleccionar la funcion
 [ ] meter confirmación cuando se depreca que se va a eliminar el draft
 [ ] tests de front
+[ ] variables de entorno de elastic search
 
 ### Things to warn
 
