@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-6059] Support for QualityControls
+
 ## [5.15.0] 2023-10-02
 
 ### Added

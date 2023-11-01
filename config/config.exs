@@ -9,9 +9,12 @@ import Config
 
 config :td_qx, :env, Mix.env()
 config :td_cluster, :env, Mix.env()
+config :td_core, :env, Mix.env()
 
 config :td_qx,
   ecto_repos: [TdQx.Repo]
+
+config :td_df_lib, :templates_module, TdCluster.Cluster.TdDf.Templates
 
 # Configures the endpoint
 config :td_qx, TdQxWeb.Endpoint,
@@ -23,7 +26,7 @@ config :td_qx, TdQxWeb.Endpoint,
   ],
   live_view: [signing_salt: "ZOlKIPdj"]
 
-config :td_qx, Truedat.Auth.Guardian,
+config :td_core, TdCore.Auth.Guardian,
   allowed_algos: ["HS512"],
   issuer: "tdauth",
   aud: "truedat",
@@ -48,6 +51,9 @@ config :td_qx, TdQx.Scheduler,
       run_strategy: Quantum.RunStrategy.Local
     ]
   ]
+
+# Import Elasticsearch config
+import_config "elastic.exs"
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

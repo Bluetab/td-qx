@@ -3,8 +3,8 @@ defmodule AuthenticationSupport do
   This module defines the functions required to add auth headers to requests
   """
   alias Plug.Conn
-  alias Truedat.Auth.Claims
-  alias Truedat.Auth.Guardian
+  alias TdCore.Auth.Claims
+  alias TdCore.Auth.Guardian
 
   def put_auth_headers(conn, jwt) do
     conn
