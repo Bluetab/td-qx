@@ -14,6 +14,20 @@ defmodule TdQx.Factory do
   alias TdQx.Expressions.ExpressionValues
   alias TdQx.Functions.Function
   alias TdQx.Functions.Param
+  alias TdQx.QualityControls.QualityControl
+  alias TdQx.QualityControls.QualityControlVersion
+  alias TdQx.QualityControls.ResultCriteria
+  alias TdQx.QualityControls.ResultCriterias
+
+  def domain_factory do
+    %{
+      name: sequence("domain_name"),
+      id: System.unique_integer([:positive]),
+      external_id: sequence("domain_external_id"),
+      updated_at: DateTime.utc_now(),
+      parent_id: nil
+    }
+  end
 
   def user_factory do
     %{
@@ -80,18 +94,13 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def resource_factory(attrs) do
-    %Resource{
-      id: sequence(:resource_id, & &1),
-      type: "data_view"
-    }
-    |> merge_attributes(attrs)
-  end
+  def queryable_properties_factory(%{from: %{} = from}), do: %QueryableProperties{from: from}
+  def queryable_properties_factory(%{join: %{} = join}), do: %QueryableProperties{join: join}
 
-  def queryable_properties_factory(%{from: from}), do: %QueryableProperties{from: from}
-  def queryable_properties_factory(%{join: join}), do: %QueryableProperties{join: join}
-  def queryable_properties_factory(%{select: select}), do: %QueryableProperties{select: select}
-  def queryable_properties_factory(%{where: where}), do: %QueryableProperties{where: where}
+  def queryable_properties_factory(%{select: %{} = select}),
+    do: %QueryableProperties{select: select}
+
+  def queryable_properties_factory(%{where: %{} = where}), do: %QueryableProperties{where: where}
   def queryable_properties_factory(_), do: %QueryableProperties{join: build(:qp_join)}
 
   def qp_join_factory(attrs) do
@@ -212,6 +221,14 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
+  def resource_factory(attrs) do
+    %Resource{
+      id: sequence(:resource_id, & &1),
+      type: "data_view"
+    }
+    |> merge_attributes(attrs)
+  end
+
   def function_factory(attrs) do
     %Function{
       name: "some name",
@@ -250,10 +267,15 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def expression_value_factory(%{constant: constant}), do: %ExpressionValue{constant: constant}
-  def expression_value_factory(%{field: field}), do: %ExpressionValue{field: field}
-  def expression_value_factory(%{function: function}), do: %ExpressionValue{function: function}
-  def expression_value_factory(%{param: param}), do: %ExpressionValue{param: param}
+  def expression_value_factory(%{constant: %{} = constant}),
+    do: %ExpressionValue{constant: constant}
+
+  def expression_value_factory(%{field: %{} = field}), do: %ExpressionValue{field: field}
+
+  def expression_value_factory(%{function: %{} = function}),
+    do: %ExpressionValue{function: function}
+
+  def expression_value_factory(%{param: %{} = param}), do: %ExpressionValue{param: param}
 
   def expression_value_factory(_), do: %ExpressionValue{constant: build(:ev_constant)}
 
@@ -322,6 +344,96 @@ defmodule TdQx.Factory do
       id: sequence(:reference_dataset_id, & &1),
       name: sequence(:reference_dataset_name, &"name #{&1}"),
       headers: ["header1", "header2"]
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def quality_control_factory(attrs) do
+    %QualityControl{
+      domain_ids: [1, 2]
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def quality_control_version_factory(attrs) do
+    %QualityControlVersion{
+      quality_control: build(:quality_control),
+      name: sequence(:quality_control_name, &"name #{&1}"),
+      version: 1,
+      status: "draft",
+      df_content: %{},
+      df_type: "some df_type",
+      result_criteria: build(:result_criteria),
+      result_type: "percentage",
+      resource: build(:resource),
+      validation: [build(:clause)]
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def quality_control_params_factory(attrs) do
+    %{
+      domain_ids: [1, 2],
+      name: sequence(:quality_control_name, &"name #{&1}"),
+      version: 1,
+      status: "draft",
+      df_content: %{},
+      df_type: "some df_type",
+      result_criteria: build(:rc_percentage),
+      result_type: "percentage",
+      resource: build(:resource),
+      validation: [build(:clause_params_for)]
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def quality_control_version_params_for_factory(attrs) do
+    %QualityControlVersion{
+      quality_control: build(:quality_control),
+      name: sequence(:quality_control_name, &"name #{&1}"),
+      version: 1,
+      status: "draft",
+      df_content: %{},
+      df_type: "some df_type",
+      result_criteria: build(:rc_percentage),
+      result_type: "percentage",
+      resource: build(:resource),
+      validation: [build(:clause_params_for)]
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def result_criteria_factory(%{deviation: %{} = deviation}),
+    do: %ResultCriteria{deviation: deviation}
+
+  def result_criteria_factory(%{errors_number: %{} = errors_number}),
+    do: %ResultCriteria{errors_number: errors_number}
+
+  def result_criteria_factory(%{percentage: %{} = percentage}),
+    do: %ResultCriteria{percentage: percentage}
+
+  def result_criteria_factory(_), do: %ResultCriteria{percentage: build(:rc_percentage)}
+
+  def rc_deviation_factory(attrs) do
+    %ResultCriterias.Deviation{
+      goal: 5.0,
+      maximum: 15.0
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def rc_errors_number_factory(attrs) do
+    %ResultCriterias.ErrorsNumber{
+      goal: 10,
+      maximum: 100
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def rc_percentage_factory(attrs) do
+    %ResultCriterias.Percentage{
+      goal: 90.0,
+      minimum: 75.0
     }
     |> merge_attributes(attrs)
   end

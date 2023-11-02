@@ -144,6 +144,9 @@ defmodule TdQxWeb.ClauseJSON do
   def embed_many(%{clauses: [%Clause{} | _] = clauses}),
     do: for(clause <- clauses, do: data(clause))
 
+  def embed_many([%Clause{} | _] = clauses),
+    do: for(clause <- clauses, do: data(clause))
+
   def embed_many(_), do: nil
 
   defp data(%Clause{} = clause) do

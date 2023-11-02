@@ -175,7 +175,7 @@ defmodule TdQx.DataViews do
 
   defp enrich_queryable(queryable), do: queryable
 
-  defp enrich_resource(%{type: "reference_dataset", id: id} = resource) do
+  def enrich_resource(%{type: "reference_dataset", id: id} = resource) do
     case TdDd.get_reference_dataset(id) do
       {:ok, %{id: id, name: name, headers: headers}} ->
         fields =
@@ -200,7 +200,7 @@ defmodule TdQx.DataViews do
     end
   end
 
-  defp enrich_resource(%{type: "data_structure", id: id} = resource) do
+  def enrich_resource(%{type: "data_structure", id: id} = resource) do
     case TdDd.get_latest_structure_version(id) do
       {:ok, %{name: name, data_fields: data_fields}} ->
         fields =
@@ -225,7 +225,7 @@ defmodule TdQx.DataViews do
     end
   end
 
-  defp enrich_resource(%{type: "data_view", id: id} = resource) do
+  def enrich_resource(%{type: "data_view", id: id} = resource) do
     case get_data_view(id) do
       %{name: name, select: select} ->
         fields =
@@ -253,5 +253,5 @@ defmodule TdQx.DataViews do
     end
   end
 
-  defp enrich_resource(resource), do: resource
+  def enrich_resource(resource), do: resource
 end
