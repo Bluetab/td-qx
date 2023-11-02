@@ -19,6 +19,8 @@ config :td_qx, TdQxWeb.Endpoint, server: false
 
 config :td_cluster, :cluster_handler, MockClusterHandler
 
+config :td_core, TdCore.Search.Cluster, api: ElasticsearchMock
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 
