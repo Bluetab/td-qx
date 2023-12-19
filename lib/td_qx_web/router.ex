@@ -22,9 +22,21 @@ defmodule TdQxWeb.Router do
     resources("/data_views", DataViewController, except: [:new, :edit])
     resources("/quality_functions", FunctionController, except: [:new, :edit])
 
-    post("/quality_controls/search", SearchController, :create)
-    post("/quality_controls/filters", SearchController, :filters)
-    get("/quality_controls/reindex", SearchController, :reindex)
+    scope "/quality_controls" do
+      post("/search", SearchController, :create)
+      post("/filters", SearchController, :filters)
+      get("/reindex", SearchController, :reindex)
+
+      scope "/execution_groups" do
+        get("/", ExecutionGroupsController, :index)
+        post("/create", ExecutionGroupsController, :create)
+      end
+
+      resources "/execution_groups", ExecutionGroupsController, only: [:index, :show]
+      # do
+      # resources("/executions", ExecutionController, only: [:index])
+      # end
+    end
 
     resources "/quality_controls", QualityControlController,
       only: [:index, :show, :delete, :create] do

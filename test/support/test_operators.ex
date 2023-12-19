@@ -14,6 +14,14 @@ defmodule TdQx.TestOperators do
     Enum.sort_by(list, & &1.id)
   end
 
+  defp sorted([%{"id" => _, "version" => _} | _] = list) do
+    Enum.sort_by(list, &Map.take(&1, ["id", "version"]))
+  end
+
+  defp sorted([%{"version" => _} | _] = list) do
+    Enum.sort_by(list, &Map.get(&1, "version"))
+  end
+
   defp sorted([%{"id" => _} | _] = list) do
     Enum.sort_by(list, &Map.get(&1, "id"))
   end

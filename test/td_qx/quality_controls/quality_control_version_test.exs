@@ -17,7 +17,10 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
 
     test "validates duplicated name" do
       quality_control = insert(:quality_control)
-      %{name: used_name} = insert(:quality_control_version)
+
+      %{name: used_name} =
+        insert(:quality_control_version, quality_control: insert(:quality_control))
+
       params = %{name: used_name}
 
       assert %{valid?: false, errors: errors} =
@@ -30,7 +33,10 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
       quality_control = insert(:quality_control)
 
       %{name: used_name} =
-        insert(:quality_control_version, status: "published", quality_control: quality_control)
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: quality_control
+        )
 
       params = %{name: used_name}
 
@@ -97,7 +103,8 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
 
   describe "status_changeset/2" do
     test "only changes status field" do
-      quality_control_version = insert(:quality_control_version)
+      quality_control_version =
+        insert(:quality_control_version, quality_control: insert(:quality_control))
 
       assert %{valid?: true, changes: changes} =
                QualityControlVersion.status_changeset(quality_control_version, "pending_approval")
@@ -106,7 +113,8 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
     end
 
     test "validates status" do
-      quality_control_version = insert(:quality_control_version)
+      quality_control_version =
+        insert(:quality_control_version, quality_control: insert(:quality_control))
 
       assert %{valid?: false, errors: errors} =
                QualityControlVersion.status_changeset(quality_control_version, "invalid_status")
@@ -138,7 +146,8 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
           result_criteria: nil,
           result_type: nil,
           resource: nil,
-          validation: []
+          validation: [],
+          quality_control: insert(:quality_control)
         )
 
       changeset = QualityControlVersion.status_changeset(quality_control_version, "published")
@@ -166,7 +175,11 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
       )
 
       quality_control_version =
-        insert(:quality_control_version, df_type: template_name, df_content: %{"foo" => "bar"})
+        insert(:quality_control_version,
+          df_type: template_name,
+          df_content: %{"foo" => "bar"},
+          quality_control: insert(:quality_control)
+        )
 
       changeset = QualityControlVersion.status_changeset(quality_control_version, "published")
 
