@@ -125,9 +125,10 @@ defmodule TdQx.QualityControlsTest do
 
     test "list_quality_control_versions/0 returns all quality_control_versions" do
       %{quality_control_id: quality_control_id} =
-        quality_control_version = insert(:quality_control_version)
+        quality_control_version =
+        insert(:quality_control_version, quality_control: insert(:quality_control))
 
-      _another_quality_control = insert(:quality_control_version)
+      insert(:quality_control_version, quality_control: insert(:quality_control))
 
       assert QualityControls.list_quality_control_versions(quality_control_id) |||
                [
@@ -136,7 +137,8 @@ defmodule TdQx.QualityControlsTest do
     end
 
     test "get_quality_control_version!/1 returns the quality_control_version with given id" do
-      quality_control_version = insert(:quality_control_version)
+      quality_control_version =
+        insert(:quality_control_version, quality_control: insert(:quality_control))
 
       assert QualityControls.get_quality_control_version!(quality_control_version.id)
              <~> quality_control_version
@@ -313,7 +315,8 @@ defmodule TdQx.QualityControlsTest do
     end
 
     test "delete_quality_control_version/1 deletes the quality_control_version" do
-      quality_control_version = insert(:quality_control_version)
+      quality_control_version =
+        insert(:quality_control_version, quality_control: insert(:quality_control))
 
       assert {:ok, %QualityControlVersion{}} =
                QualityControls.delete_quality_control_version(quality_control_version)

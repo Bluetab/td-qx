@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-6152] Support for execution groups
+
 ## [5.17.0] 2023-11-02
 
 ### Added

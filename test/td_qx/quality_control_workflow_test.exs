@@ -30,7 +30,10 @@ defmodule TdQx.QualityControlWorkflowTest do
     end
 
     test "validates quality control unique name and status" do
-      %{name: name} = insert(:quality_control_version)
+      %{name: name} =
+        insert(:quality_control_version,
+          quality_control: insert(:quality_control)
+        )
 
       assert {:error, %{errors: errors}} =
                QualityControlWorkflow.create_quality_control(%{name: name, domain_ids: [1, 2]})
@@ -39,7 +42,11 @@ defmodule TdQx.QualityControlWorkflowTest do
     end
 
     test "validates quality control unique name" do
-      %{name: name} = insert(:quality_control_version, status: "published")
+      %{name: name} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
 
       assert {:error, %{errors: errors}} =
                QualityControlWorkflow.create_quality_control(%{name: name, domain_ids: [1, 2]})
@@ -430,7 +437,8 @@ defmodule TdQx.QualityControlWorkflowTest do
             result_criteria: nil,
             result_type: nil,
             resource: nil,
-            validation: []
+            validation: [],
+            quality_control: insert(:quality_control)
           )
 
         changeset = QualityControlVersion.status_changeset(quality_control_version, target_status)
@@ -464,7 +472,8 @@ defmodule TdQx.QualityControlWorkflowTest do
           result_criteria: %{},
           result_type: "result_type",
           resource: build(:resource),
-          validation: [build(:clause)]
+          validation: [build(:clause)],
+          quality_control: insert(:quality_control)
         )
 
       changeset = QualityControlVersion.status_changeset(quality_control_version, "published")
@@ -496,7 +505,8 @@ defmodule TdQx.QualityControlWorkflowTest do
           result_criteria: %{},
           result_type: "result_type",
           resource: build(:resource),
-          validation: [build(:clause)]
+          validation: [build(:clause)],
+          quality_control: insert(:quality_control)
         )
 
       changeset = QualityControlVersion.status_changeset(quality_control_version, "published")
@@ -530,7 +540,8 @@ defmodule TdQx.QualityControlWorkflowTest do
             result_criteria: %{},
             result_type: "result_type",
             resource: build(:resource),
-            validation: [build(:clause)]
+            validation: [build(:clause)],
+            quality_control: insert(:quality_control)
           )
 
         changeset = QualityControlVersion.status_changeset(quality_control_version, target_status)
@@ -557,7 +568,8 @@ defmodule TdQx.QualityControlWorkflowTest do
             resource: nil,
             result_criteria: nil,
             result_type: nil,
-            validation: []
+            validation: [],
+            quality_control: insert(:quality_control)
           )
 
         changeset = QualityControlVersion.status_changeset(quality_control_version, target_status)
@@ -580,7 +592,8 @@ defmodule TdQx.QualityControlWorkflowTest do
           resource: nil,
           result_criteria: nil,
           result_type: nil,
-          validation: []
+          validation: [],
+          quality_control: insert(:quality_control)
         )
 
       changeset = QualityControlVersion.status_changeset(quality_control_version, "published")

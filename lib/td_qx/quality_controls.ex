@@ -4,12 +4,14 @@ defmodule TdQx.QualityControls do
   """
 
   import Ecto.Query, warn: false
-  alias TdCache.TaxonomyCache
-  alias TdQx.DataViews
-  alias TdQx.Repo
 
+  alias TdCache.TaxonomyCache
+
+  alias TdQx.DataViews
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
+
+  alias TdQx.Repo
 
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
