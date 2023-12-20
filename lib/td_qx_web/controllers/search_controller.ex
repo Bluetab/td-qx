@@ -2,8 +2,10 @@ defmodule TdQxWeb.SearchController do
   use TdQxWeb, :controller
 
   alias TdCore.Search
-  alias TdCore.Search.Permissions
+  alias TdCore.Search.Permissions, as: SearchPermissions
   alias TdCore.Search.Query
+  alias TdQx.Executions.Actions
+  alias TdQx.Permissions
   alias TdQx.QualityControls
 
   action_fallback(TdQxWeb.FallbackController)
@@ -16,18 +18,11 @@ defmodule TdQxWeb.SearchController do
     claims = conn.assigns[:current_resource]
 
     with :ok <- Bodyguard.permit(QualityControls, :search, claims) do
-      page = Map.get(params, "page", @default_page)
-      size = Map.get(params, "size", @default_size)
+      results = do_search(params, claims)
 
-      sort = Map.get(params, "sort") || %{}
-
-      {query, _} = build_query(params, claims)
-
-      {:ok, %{total: _total, results: results}} =
-        %{from: page * size, size: size, query: query, sort: sort}
-        |> Search.search(:quality_controls)
-
-      render(conn, :show, results: results)
+      conn
+      |> Actions.put_actions(claims)
+      |> render(:show, results: results)
     end
   end
 
@@ -37,19 +32,13 @@ defmodule TdQxWeb.SearchController do
     with :ok <- Bodyguard.permit(QualityControls, :search, claims) do
       {query, aggs} = build_query(params, claims)
 
-      {:ok, response} =
-        %{query: query, aggs: aggs, size: 0}
-        |> Search.get_filters(:quality_controls)
+      search = %{query: query, aggs: aggs, size: 0}
 
-      render(conn, :show, results: response)
+      case Search.get_filters(search, :quality_controls) do
+        {:ok, response} -> render(conn, :show, results: response)
+        {:error, _error} -> render(conn, :show, results: %{})
+      end
     end
-  end
-
-  defp build_query(params, claims) do
-    permissions_filter = Permissions.filter_for_permissions(["view_quality_controls"], claims)
-    aggs = Search.ElasticDocumentProtocol.aggregations(%QualityControls.QualityControl{})
-    query = Query.build_query(permissions_filter, params, aggs)
-    {query, aggs}
   end
 
   def reindex(conn, _params) do
@@ -58,6 +47,38 @@ defmodule TdQxWeb.SearchController do
     with :ok <- Bodyguard.permit(QualityControl, :reindex, claims) do
       Search.IndexWorker.reindex(:quality_controls, :all)
       send_resp(conn, :accepted, "")
+    end
+  end
+
+  defp build_query(params, claims) do
+    permissions_filter =
+      SearchPermissions.filter_for_permissions(["view_quality_controls"], claims)
+
+    aggs = Search.ElasticDocumentProtocol.aggregations(%QualityControls.QualityControl{})
+    query = Query.build_query(permissions_filter, params, aggs)
+    {query, aggs}
+  end
+
+  defp do_search(%{"must" => must = %{"executable" => ["true"]}} = params, claims) do
+    params
+    |> Map.put("must", Map.delete(must, "executable"))
+    |> do_search(claims)
+    |> Enum.filter(&Permissions.is_visible_by_permissions(&1, claims))
+  end
+
+  defp do_search(%{} = params, claims) do
+    page = Map.get(params, "page", @default_page)
+    size = Map.get(params, "size", @default_size)
+
+    sort = Map.get(params, "sort") || %{}
+
+    {query, _} = build_query(params, claims)
+
+    search = %{from: page * size, size: size, query: query, sort: sort}
+
+    case Search.search(search, :quality_controls) do
+      {:ok, %{total: _total, results: results}} -> results
+      {:error, error} -> error
     end
   end
 end

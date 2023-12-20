@@ -5,6 +5,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
   alias TdCore.Search.MockIndexWorker
   alias TdQx.QualityControls.QualityControlVersion
 
+  import TdQx.TestOperators
+
   setup %{conn: conn} do
     start_supervised!(MockIndexWorker)
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -38,23 +40,33 @@ defmodule TdQxWeb.QualityControlControllerTest do
       conn = get(conn, ~p"/api/quality_controls/#{qc_id}/versions")
 
       assert [
-               %{"version" => 1, "status" => "published"},
-               %{"version" => 2, "status" => "draft"}
-             ] = json_response(conn, 200)["data"]
+               %{"version" => 1, "status" => "published", "id" => qc_id},
+               %{"version" => 2, "status" => "draft", "id" => qc_id}
+             ] ||| json_response(conn, 200)["data"]
     end
   end
 
   describe "show" do
     @tag authentication: [role: "admin"]
     test "will return actions for published version", %{conn: conn} do
-      %{quality_control_id: id} = insert(:quality_control_version, status: "published")
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
+
       conn = get(conn, ~p"/api/quality_controls/#{id}")
       assert %{"_actions" => ["deprecate", "create_draft"]} = json_response(conn, 200)
     end
 
     @tag authentication: [role: "admin"]
     test "will return actions for deprecated version", %{conn: conn} do
-      %{quality_control_id: id} = insert(:quality_control_version, status: "deprecated")
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "deprecated",
+          quality_control: insert(:quality_control)
+        )
+
       conn = get(conn, ~p"/api/quality_controls/#{id}")
       assert %{"_actions" => ["restore"]} = json_response(conn, 200)
     end
@@ -62,7 +74,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
     @tag authentication: [role: "admin"]
     test "will return actions for draft with incomplete version", %{conn: conn} do
       %{quality_control_id: id, df_type: template_name} =
-        insert(:quality_control_version, status: "draft", validation: [])
+        insert(:quality_control_version,
+          status: "draft",
+          validation: [],
+          quality_control: insert(:quality_control)
+        )
 
       TdDfMock.get_template_by_name!(
         &Mox.expect/4,
@@ -77,7 +93,10 @@ defmodule TdQxWeb.QualityControlControllerTest do
     @tag authentication: [role: "admin"]
     test "will return actions for draft with valid version", %{conn: conn} do
       %{quality_control_id: id, df_type: template_name} =
-        insert(:quality_control_version, status: "draft")
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: insert(:quality_control)
+        )
 
       TdDfMock.get_template_by_name!(
         &Mox.expect/4,
@@ -390,7 +409,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
   describe "create quality_control draft" do
     @tag authentication: [role: "admin"]
     test "renders quality_control when data is valid", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "published")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{
         "name" => "new name"
@@ -411,7 +434,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders quality_control when with published status", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "published")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
 
       template_name = "df_type"
 
@@ -442,29 +469,30 @@ defmodule TdQxWeb.QualityControlControllerTest do
       conn = get(conn, ~p"/api/quality_controls/#{id}/versions")
 
       assert [
+               %{"version" => 1, "status" => "versioned", "id" => id},
                %{
-                 "version" => 1,
-                 "status" => "versioned"
-               },
-               %{
-                 "id" => ^id,
+                 "id" => id,
                  "version" => 2,
                  "status" => "published",
                  "df_content" => %{"foo" => "bar"},
                  "df_type" => "df_type",
                  "domain_ids" => [1, 2],
                  "name" => "some name",
-                 "result_criteria" => ^result_criteria,
+                 "result_criteria" => result_criteria,
                  "result_type" => "percentage",
-                 "resource" => ^resource,
-                 "validation" => [^clause]
+                 "resource" => resource,
+                 "validation" => [clause]
                }
-             ] = json_response(conn, 200)["data"]
+             ] ||| json_response(conn, 200)["data"]
     end
 
     @tag authentication: [role: "admin"]
     test "renders errors when published version is invalid", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "published")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{
         "name" => "some name",
@@ -485,7 +513,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when status is invalid", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "published")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{
         "name" => "some name",
@@ -499,7 +531,12 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "published")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control)
+        )
+
       conn = post(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: %{})
 
       assert %{"name" => ["can't be blank"]} = json_response(conn, 422)["errors"]
@@ -507,7 +544,12 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when latest version is not published", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "pending_approval")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "pending_approval",
+          quality_control: insert(:quality_control)
+        )
+
       conn = post(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: %{})
 
       assert "invalid action create_draft not published" = json_response(conn, 422)["errors"]
@@ -663,7 +705,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
   describe "update quality_control status" do
     @tag authentication: [role: "admin"]
     test "handles invalid action", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "draft")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{"action" => "invalid_action"}
 
@@ -674,7 +720,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "handles send_to_draft action", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "rejected")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "rejected",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{"action" => "send_to_draft"}
 
@@ -712,14 +762,18 @@ defmodule TdQxWeb.QualityControlControllerTest do
       conn = get(conn, ~p"/api/quality_controls/#{qc_id}/versions", params)
 
       assert [
-               %{"version" => 1, "status" => "versioned"},
-               %{"version" => 2, "status" => "published"}
-             ] = json_response(conn, 200)["data"]
+               %{"id" => qc_id, "version" => 1, "status" => "versioned"},
+               %{"id" => qc_id, "version" => 2, "status" => "published"}
+             ] ||| json_response(conn, 200)["data"]
     end
 
     @tag authentication: [role: "admin"]
     test "handles error for incompatible action", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, status: "pending_approval")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "pending_approval",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{"action" => "send_to_draft"}
 
@@ -752,7 +806,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
           %{quality_control_id: qc_id} =
             _quality_control_version =
-            insert(:quality_control_version, status: previous_status, df_type: template_name)
+            insert(:quality_control_version,
+              status: previous_status,
+              df_type: template_name,
+              quality_control: insert(:quality_control)
+            )
 
           params = %{"action" => action}
 
@@ -846,7 +904,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
   describe "update quality_control draft" do
     @tag authentication: [role: "admin"]
     test "renders quality_control when data is valid", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, version: 1)
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version, version: 1, quality_control: insert(:quality_control))
 
       resource = string_params_for(:resource)
       clause = string_params_for(:clause_params_for)
@@ -889,8 +948,13 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when name is duplicated", %{conn: conn} do
-      insert(:quality_control_version, name: "name1")
-      %{quality_control_id: qc_id} = insert(:quality_control_version, name: "name2")
+      insert(:quality_control_version,
+        name: "name1",
+        quality_control: insert(:quality_control)
+      )
+
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version, name: "name2", quality_control: insert(:quality_control))
 
       params = %{"name" => "name1"}
       conn = patch(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
@@ -900,7 +964,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [role: "admin"]
     test "renders errors when name is empty", %{conn: conn} do
-      %{quality_control_id: qc_id} = insert(:quality_control_version, name: "name0")
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version, name: "name0", quality_control: insert(:quality_control))
 
       params = %{"name" => ""}
       conn = patch(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
@@ -914,7 +979,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
     @tag authentication: [role: "admin"]
     test "renders errors when updating a version with incorrect status", %{conn: conn} do
       %{quality_control_id: qc_id} =
-        insert(:quality_control_version, name: "name0", status: "pending_approval")
+        insert(:quality_control_version,
+          name: "name0",
+          status: "pending_approval",
+          quality_control: insert(:quality_control)
+        )
 
       params = %{"name" => ""}
       conn = patch(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
@@ -932,7 +1001,10 @@ defmodule TdQxWeb.QualityControlControllerTest do
       %{quality_control_id: qc_id} =
         insert(:quality_control_version,
           status: "draft",
-          quality_control: build(:quality_control, domain_ids: [domain_id])
+          quality_control:
+            build(:quality_control,
+              domain_ids: [domain_id]
+            )
         )
 
       %{"df_type" => template_name} = params = string_params_for(:quality_control_params)
@@ -962,7 +1034,10 @@ defmodule TdQxWeb.QualityControlControllerTest do
       %{quality_control_id: qc_id} =
         insert(:quality_control_version,
           status: "draft",
-          quality_control: build(:quality_control, domain_ids: [domain_id + 1])
+          quality_control:
+            build(:quality_control,
+              domain_ids: [domain_id + 1]
+            )
         )
 
       %{"df_type" => template_name} = params = string_params_for(:quality_control_params)
