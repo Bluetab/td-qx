@@ -9,11 +9,17 @@ defmodule TdQx.Factory do
   alias TdQx.DataViews.Queryable
   alias TdQx.DataViews.QueryableProperties
   alias TdQx.DataViews.Resource
+
+  alias TdQx.Executions.Execution
+  alias TdQx.Executions.ExecutionGroup
+
   alias TdQx.Expressions.Expression
   alias TdQx.Expressions.ExpressionValue
   alias TdQx.Expressions.ExpressionValues
+
   alias TdQx.Functions.Function
   alias TdQx.Functions.Param
+
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.QualityControls.ResultCriteria
@@ -355,9 +361,23 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
+  def execution_groups_factory(attrs) do
+    %ExecutionGroup{
+      df_content: %{},
+      executions: for(_id <- [1, 2, 3], do: execution_factory(%{}))
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def execution_factory(attrs) do
+    %Execution{
+      status: "pending"
+    }
+    |> merge_attributes(attrs)
+  end
+
   def quality_control_version_factory(attrs) do
     %QualityControlVersion{
-      quality_control: build(:quality_control),
       name: sequence(:quality_control_name, &"name #{&1}"),
       version: 1,
       status: "draft",
