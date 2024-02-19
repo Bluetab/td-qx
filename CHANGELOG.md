@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unversioned]
+
+- [TD-6425] Ensure SSL is configured for release migrations
+
 ## [5.20.0] 2023-12-19
 
 ### Added
