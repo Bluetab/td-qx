@@ -5,8 +5,6 @@ defmodule TdQx.Executions.Policy do
 
   alias TdCore.Auth.Permissions
 
-  alias TdQx.Executions.ExecutionGroup
-
   @actions [:index, :create, :show, :update, :execute, :view]
 
   # Admin accounts can do anything with data sets

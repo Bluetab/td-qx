@@ -27,15 +27,8 @@ defmodule TdQxWeb.Router do
       post("/filters", SearchController, :filters)
       get("/reindex", SearchController, :reindex)
 
-      scope "/execution_groups" do
-        get("/", ExecutionGroupsController, :index)
-        post("/create", ExecutionGroupsController, :create)
-      end
-
+      post("/execution_groups/create", ExecutionGroupsController, :create)
       resources "/execution_groups", ExecutionGroupsController, only: [:index, :show]
-      # do
-      # resources("/executions", ExecutionController, only: [:index])
-      # end
     end
 
     resources "/quality_controls", QualityControlController,
