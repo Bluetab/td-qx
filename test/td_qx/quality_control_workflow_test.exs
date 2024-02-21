@@ -2,16 +2,11 @@ defmodule TdQx.QualityControlWorkflowTest do
   use TdQx.DataCase
 
   alias TdCluster.TestHelpers.TdDfMock
-  alias TdCore.Search.MockIndexWorker
+  alias TdCore.Search.IndexWorkerMock
   alias TdQx.QualityControls
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.QualityControlWorkflow
-
-  setup do
-    start_supervised!(MockIndexWorker)
-    :ok
-  end
 
   describe "create_quality_control/1" do
     test "creates quality control and its version" do
@@ -71,7 +66,7 @@ defmodule TdQx.QualityControlWorkflowTest do
         "name" => "some name"
       }
 
-      MockIndexWorker.clear()
+      IndexWorkerMock.clear()
 
       assert {:ok,
               %QualityControlVersion{
@@ -82,7 +77,7 @@ defmodule TdQx.QualityControlWorkflowTest do
                 }
               }} = QualityControlWorkflow.create_quality_control(params)
 
-      assert MockIndexWorker.calls() == [{:reindex, :quality_controls, [id]}]
+      assert IndexWorkerMock.calls() == [{:reindex, :quality_controls, [id]}]
     end
   end
 

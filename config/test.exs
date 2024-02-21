@@ -17,7 +17,7 @@ config :td_qx, TdQx.Repo,
 # you can enable the server option below.
 config :td_qx, TdQxWeb.Endpoint, server: false
 
-config :td_cluster, :cluster_handler, MockClusterHandler
+config :td_cluster, TdCluster.ClusterHandler, MockClusterHandler
 
 config :td_core, TdCore.Search.Cluster, api: ElasticsearchMock
 

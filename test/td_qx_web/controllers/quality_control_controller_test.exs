@@ -2,13 +2,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
   use TdQxWeb.ConnCase
 
   alias TdCluster.TestHelpers.TdDfMock
-  alias TdCore.Search.MockIndexWorker
   alias TdQx.QualityControls.QualityControlVersion
 
   import TdQx.TestOperators
 
   setup %{conn: conn} do
-    start_supervised!(MockIndexWorker)
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 

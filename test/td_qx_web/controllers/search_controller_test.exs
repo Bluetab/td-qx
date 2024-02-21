@@ -4,8 +4,6 @@ defmodule TdQxWeb.SearchControllerTest do
   import Mox
 
   setup do
-    start_supervised!(TdCore.Search.Cluster)
-
     quality_control = insert(:quality_control)
     qcv = insert(:quality_control_version, quality_control: quality_control)
 

@@ -5,32 +5,18 @@ defmodule TdQx.Application do
 
   use Application
 
-  alias TdCore.Search.IndexWorker
-
   @impl true
   def start(_type, _args) do
-    env = Application.get_env(:td_qx, :env)
-
-    children =
-      [
-        TdQx.Repo,
-        TdQxWeb.Endpoint,
-        TdQx.Scheduler
-      ] ++ workers(env)
+    children = [
+      TdQx.Repo,
+      TdQxWeb.Endpoint,
+      TdQx.Scheduler
+    ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: TdQx.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-
-  defp workers(:test), do: []
-
-  defp workers(_) do
-    [
-      # Elasticsearch
-      TdCore.Search.Cluster
-    ] ++ IndexWorker.get_index_workers()
   end
 
   # Tell Phoenix to update the endpoint configuration

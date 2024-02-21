@@ -72,17 +72,24 @@ defmodule TdQx.Executions do
     changeset = ExecutionGroup.changeset(%ExecutionGroup{}, %{df_content: df_content})
 
     with {:ok, %{id: execution_group_id} = execution_group} <- Repo.insert(changeset) do
-      Enum.each(quality_controls, fn %{id: id} ->
-        %Execution{}
-        |> Execution.changeset(%{
-          execution_group_id: execution_group_id,
-          quality_control_id: id
-        })
-        |> Repo.insert()
-      end)
-
+      Enum.each(quality_controls, &insert_execution(&1, execution_group_id))
       {:ok, execution_group}
     end
+  end
+
+  defp insert_execution(%{id: id}, execution_group_id),
+    do: insert_execution(id, execution_group_id)
+
+  defp insert_execution(%{"id" => id}, execution_group_id),
+    do: insert_execution(id, execution_group_id)
+
+  defp insert_execution(id, execution_group_id) do
+    %Execution{}
+    |> Execution.changeset(%{
+      execution_group_id: execution_group_id,
+      quality_control_id: id
+    })
+    |> Repo.insert()
   end
 
   @doc """
