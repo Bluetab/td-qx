@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.2.0] 2024-02-26
+
+### Added
+
+- [TD-6243] Update TdCore Elasticsearch tests
+- [TD-6425] Ensure SSL is configured for release migrations
+
 ## [5.20.0] 2023-12-19
 
 ### Added

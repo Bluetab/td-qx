@@ -1,14 +1,9 @@
 defmodule TdQxWeb.ExecutionGroupsControllerTest do
   use TdQxWeb.ConnCase
 
-  alias TdCore.Search.MockIndexWorker
-
   import Mox
 
   setup %{conn: conn} do
-    start_supervised!(MockIndexWorker)
-    start_supervised!(TdCore.Search.Cluster)
-
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 

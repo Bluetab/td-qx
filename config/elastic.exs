@@ -6,6 +6,10 @@ import Config
 #   max_bulk_results: 100_000
 
 config :td_core, TdCore.Search.Cluster,
+  # The default URL where Elasticsearch is hosted on your system.
+  # Will be overridden by the `ES_URL` environment variable if set.
+  url: "http://elastic:9200",
+
   # If you want to mock the responses of the Elasticsearch JSON API
   # for testing or other purposes, you can inject a different module
   # here. It must implement the Elasticsearch.API behaviour.
@@ -19,6 +23,13 @@ config :td_core, TdCore.Search.Cluster,
   ],
   aliases: %{
     quality_controls: "quality_controls"
+  },
+
+  # Aggregations default
+  aggregations: %{
+    "domain" => 50,
+    "user" => 50,
+    "system" => 50
   },
   default_settings: %{
     "number_of_shards" => 5,
@@ -62,8 +73,4 @@ config :td_core, TdCore.Search.Cluster,
         }
       }
     }
-  },
-
-  # The default URL where Elasticsearch is hosted on your system.
-  # Will be overridden by the `ES_URL` environment variable if set.
-  url: "http://elastic:9200"
+  }

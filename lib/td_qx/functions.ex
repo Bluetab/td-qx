@@ -150,7 +150,7 @@ defmodule TdQx.Functions do
         {count, _} -> Logger.info("Loaded #{count} functions")
       end
     else
-      Logger.warn("File #{path} does not exist")
+      Logger.warning("File #{path} does not exist")
     end
   end
 
