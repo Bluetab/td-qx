@@ -140,7 +140,7 @@ defmodule TdQxWeb.ExecutionGroupsControllerTest do
         "query" => ""
       }
 
-      conn = post(conn, ~p"/api/quality_controls/execution_groups/create", creation_params)
+      conn = post(conn, ~p"/api/quality_controls/execution_groups", creation_params)
 
       assert %{"executions" => [_, _, _]} = json_response(conn, 201)["data"]
     end
@@ -168,7 +168,7 @@ defmodule TdQxWeb.ExecutionGroupsControllerTest do
         "query" => ""
       }
 
-      conn = post(conn, ~p"/api/quality_controls/execution_groups/create", creation_params)
+      conn = post(conn, ~p"/api/quality_controls/execution_groups", creation_params)
 
       assert %{"executions" => [_, _, _]} = json_response(conn, 201)["data"]
     end
@@ -189,7 +189,7 @@ defmodule TdQxWeb.ExecutionGroupsControllerTest do
 
       assert %{"errors" => %{"detail" => "Forbidden"}} ==
                conn
-               |> post(~p"/api/quality_controls/execution_groups/create", creation_params)
+               |> post(~p"/api/quality_controls/execution_groups", creation_params)
                |> json_response(:forbidden)
     end
   end

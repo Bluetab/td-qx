@@ -104,8 +104,6 @@ defmodule TdQx.ExecutionsTest do
         quality_control: quality_control
       )
 
-    Map.merge(quality_control, %{
-      published_version: quality_control_version
-    })
+    Map.merge(quality_control, %{published_version: quality_control_version})
   end
 end

@@ -68,6 +68,12 @@ defmodule TdQx.Executions do
   """
   def create_execution_group([], _), do: {:error, :not_found}
 
+  def create_execution_group([%{"id" => _id} | _] = quality_controls, params) do
+    quality_controls
+    |> Enum.map(&%{id: &1["id"]})
+    |> create_execution_group(params)
+  end
+
   def create_execution_group(quality_controls, %{"df_content" => df_content}) do
     changeset = ExecutionGroup.changeset(%ExecutionGroup{}, %{df_content: df_content})
 
