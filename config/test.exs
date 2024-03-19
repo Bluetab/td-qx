@@ -30,5 +30,3 @@ config :phoenix, :plug_init_mode, :runtime
 config :td_cache, redis_host: "redis", port: 6380
 
 config :td_qx, TdQx.Scheduler, jobs: []
-
-config :td_cluster, groups: [:qx]
