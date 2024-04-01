@@ -7,13 +7,11 @@ defmodule TdQx.Application do
 
   @impl true
   def start(_type, _args) do
-
-    children =
-      [
-        TdQx.Repo,
-        TdQxWeb.Endpoint,
-        TdQx.Scheduler
-      ]
+    children = [
+      TdQx.Repo,
+      TdQxWeb.Endpoint,
+      TdQx.Scheduler
+    ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
