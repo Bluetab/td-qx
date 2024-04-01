@@ -29,7 +29,8 @@ config :td_core, TdCore.Search.Cluster,
   aggregations: %{
     "domain" => 50,
     "user" => 50,
-    "system" => 50
+    "system" => 50,
+    "default" => 50
   },
   default_settings: %{
     "number_of_shards" => 5,
