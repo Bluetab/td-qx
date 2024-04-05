@@ -41,6 +41,11 @@ guides](http://www.phoenixframework.org/docs/deployment).
 - [ex_machina](https://hex.pm/packages/ex_machina) - A factory library for test
   data
 
+## Environment variables
+
+### Elastic bulk page size configuration
+- BULK_PAGE_SIZE_QUALITY_CONTROLS
+
 ## Authors
 
 - **Bluetab Solutions Group, SL** - _Initial work_ -
