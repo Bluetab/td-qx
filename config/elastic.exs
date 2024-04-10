@@ -29,7 +29,8 @@ config :td_core, TdCore.Search.Cluster,
   aggregations: %{
     "domain" => 50,
     "user" => 50,
-    "system" => 50
+    "system" => 50,
+    "default" => 50
   },
   default_settings: %{
     "number_of_shards" => 5,
@@ -48,7 +49,8 @@ config :td_core, TdCore.Search.Cluster,
     quality_controls: %{
       store: TdQx.Search.Store,
       sources: [TdQx.QualityControls.QualityControl],
-      bulk_page_size: 5000,
+      bulk_page_size:
+        System.get_env("BULK_PAGE_SIZE_QUALITY_CONTROLS", "5000") |> String.to_integer(),
       bulk_wait_interval: 0,
       bulk_action: "index",
       settings: %{
