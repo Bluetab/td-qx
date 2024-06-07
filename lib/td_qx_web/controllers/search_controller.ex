@@ -10,7 +10,6 @@ defmodule TdQxWeb.SearchController do
 
   action_fallback(TdQxWeb.FallbackController)
 
-  # @index_worker Application.compile_env(:td_qx, :dq_index_worker)
   @default_page 0
   @default_size 20
 

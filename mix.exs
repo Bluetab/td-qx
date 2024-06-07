@@ -60,7 +60,7 @@ defmodule TdQx.MixProject do
       {:bodyguard, "~> 2.4"},
       {:quantum, "~> 3.0"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:td_core, git: "https://github.com/Bluetab/td-core.git", tag: "6.5.3"},
+      {:td_core, git: "https://github.com/Bluetab/td-core.git", tag: "6.7.0"},
       {:cors_plug, "~> 3.0"},
       {:ex_machina, "~> 2.7.0", only: :test},
       {:mox, "~> 1.0", only: :test}
