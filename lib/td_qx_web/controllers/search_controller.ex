@@ -7,6 +7,7 @@ defmodule TdQxWeb.SearchController do
   alias TdQx.Executions.Actions
   alias TdQx.Permissions
   alias TdQx.QualityControls
+  alias TdQx.Search.Indexer
 
   action_fallback(TdQxWeb.FallbackController)
 
@@ -44,7 +45,7 @@ defmodule TdQxWeb.SearchController do
     claims = conn.assigns[:current_resource]
 
     with :ok <- Bodyguard.permit(QualityControl, :reindex, claims) do
-      Search.IndexWorker.reindex(:quality_controls, :all)
+      Indexer.reindex(:all)
       send_resp(conn, :accepted, "")
     end
   end
