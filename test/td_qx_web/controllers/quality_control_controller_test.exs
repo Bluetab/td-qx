@@ -200,7 +200,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
         "domain_ids" => [1, 2],
         "name" => "some name",
         "status" => "published",
-        "df_content" => %{"foo" => "bar"},
+        "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
         "df_type" => template_name,
         "result_criteria" => string_params_for(:rc_percentage),
         "result_type" => "percentage",
@@ -217,7 +217,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "id" => ^id,
                "version" => 1,
                "status" => "published",
-               "df_content" => %{"foo" => "bar"},
+               "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                "df_type" => "df_type",
                "domain_ids" => [1, 2],
                "name" => "some name",
@@ -453,7 +453,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
       params = %{
         "name" => "some name",
         "status" => "published",
-        "df_content" => %{"foo" => "bar"},
+        "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
         "df_type" => template_name,
         "result_criteria" => result_criteria,
         "result_type" => "percentage",
@@ -472,7 +472,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
                  "id" => id,
                  "version" => 2,
                  "status" => "published",
-                 "df_content" => %{"foo" => "bar"},
+                 "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                  "df_type" => "df_type",
                  "domain_ids" => [1, 2],
                  "name" => "some name",
@@ -913,7 +913,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
         "resource" => resource,
         "validation" => [clause],
         "df_type" => "df_type",
-        "df_content" => %{"foo" => "bar"},
+        "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
         "status" => "not_changed",
         "version" => 10,
         "domain_ids" => [5, 6]
@@ -938,7 +938,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "version" => 1,
                "status" => "draft",
                "df_type" => "df_type",
-               "df_content" => %{"foo" => "bar"},
+               "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                "resource" => ^resource,
                "validation" => [^clause]
              } = json_response(conn, 200)["data"]
