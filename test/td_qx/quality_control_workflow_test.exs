@@ -462,7 +462,7 @@ defmodule TdQx.QualityControlWorkflowTest do
 
       quality_control_version =
         insert(:quality_control_version,
-          df_content: %{"foo" => "bar"},
+          df_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
           df_type: template_name,
           result_criteria: %{},
           result_type: "result_type",
@@ -495,7 +495,7 @@ defmodule TdQx.QualityControlWorkflowTest do
 
       quality_control_version =
         insert(:quality_control_version,
-          df_content: %{"not_foo" => "bar"},
+          df_content: %{"not_foo" => %{"value" => "bar", "origin" => "user"}},
           df_type: template_name,
           result_criteria: %{},
           result_type: "result_type",
@@ -530,7 +530,7 @@ defmodule TdQx.QualityControlWorkflowTest do
 
         quality_control_version =
           insert(:quality_control_version,
-            df_content: %{"foo" => "bar"},
+            df_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
             df_type: template_name,
             result_criteria: %{},
             result_type: "result_type",
