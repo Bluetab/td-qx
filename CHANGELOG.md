@@ -1,5 +1,14 @@
 # Changelog
 
+## [6.7.0] 2024-06-13
+
+### Changed
+
+- [TD-6561] 
+  - Standardise aggregations limits
+  - Use keyword list for elastic search configuration
+- [TD-6402] IndexWorker improvement
+
 ## [6.5.0] 2024-04-30
 
 ### Added

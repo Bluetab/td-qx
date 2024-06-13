@@ -63,3 +63,50 @@ if config_env() == :prod do
       password: password
   end
 end
+
+config :td_core, TdCore.Search.Cluster,
+  # If the variable delete_existing_index is set to false,
+  # it will not be deleted in the case that there is no index in the hot swap process."
+  delete_existing_index: System.get_env("DELETE_EXISTING_INDEX", "true") |> String.to_atom(),
+  default_options: [
+    timeout: System.get_env("ES_TIMEOUT", "5000") |> String.to_integer(),
+    recv_timeout: System.get_env("ES_RECV_TIMEOUT", "40000") |> String.to_integer()
+  ],
+  default_settings: %{
+    "number_of_shards" => System.get_env("ES_SHARDS", "1") |> String.to_integer(),
+    "number_of_replicas" => System.get_env("ES_REPLICAS", "1") |> String.to_integer(),
+    "refresh_interval" => System.get_env("ES_REFRESH_INTERVAL", "5s"),
+    "max_result_window" => System.get_env("ES_MAX_RESULT_WINDOW", "10000") |> String.to_integer(),
+    "index.indexing.slowlog.threshold.index.warn" =>
+      System.get_env("ES_INDEXING_SLOWLOG_THRESHOLD_WARN", "10s"),
+    "index.indexing.slowlog.threshold.index.info" =>
+      System.get_env("ES_INDEXING_SLOWLOG_THRESHOLD_INFO", "5s"),
+    "index.indexing.slowlog.threshold.index.debug" =>
+      System.get_env("ES_INDEXING_SLOWLOG_THRESHOLD_DEBUG", "2s"),
+    "index.indexing.slowlog.threshold.index.trace" =>
+      System.get_env("ES_INDEXING_SLOWLOG_THRESHOLD_TRACE", "500ms"),
+    "index.indexing.slowlog.level" => System.get_env("ES_INDEXING_SLOWLOG_LEVEL", "info"),
+    "index.indexing.slowlog.source" => System.get_env("ES_INDEXING_SLOWLOG_SOURCE", "1000"),
+    "index.mapping.total_fields.limit" => System.get_env("ES_MAPPING_TOTAL_FIELDS_LIMIT", "3000")
+  }
+
+config :td_core, TdCore.Search.Cluster,
+  indexes: [
+    quality_controls: [
+      bulk_page_size:
+        System.get_env("BULK_PAGE_SIZE_QUALITY_CONTROLS", "5000") |> String.to_integer()
+    ]
+  ]
+
+config :td_core, TdCore.Search.Cluster,
+  # Aggregations default
+  aggregations: %{
+    "domain" => System.get_env("AGG_DOMAIN_SIZE", "500") |> String.to_integer(),
+    "user" => System.get_env("AGG_USER_SIZE", "500") |> String.to_integer(),
+    "system" => System.get_env("AGG_SYSTEM_SIZE", "500") |> String.to_integer(),
+    "default" => System.get_env("AGG_DEFAULT_SIZE", "500") |> String.to_integer(),
+    "result_type.raw" => System.get_env("AGG_RESULT_TYPE_RAW_SIZE", "500") |> String.to_integer(),
+    "status" => System.get_env("AGG_STATUS_SIZE", "500") |> String.to_integer(),
+    "df_type.raw" => System.get_env("AGG_DF_TYPE_RAW_SIZE", "500") |> String.to_integer(),
+    "taxonomy" => System.get_env("AGG_TAXONOMY_SIZE", "500") |> String.to_integer()
+  }

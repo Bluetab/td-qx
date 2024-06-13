@@ -70,10 +70,14 @@ defmodule TdQx.QualityControls.ElasticDocument do
 
     def aggregations(_) do
       %{
-        "result_type.raw" => %{terms: %{field: "result_type.raw"}},
-        "status" => %{terms: %{field: "status"}},
-        "df_type.raw" => %{terms: %{field: "df_type.raw"}},
-        "taxonomy" => %{terms: %{field: "domain_ids", size: 500}}
+        "result_type.raw" => %{
+          terms: %{field: "result_type.raw", size: Cluster.get_size_field("result_type.raw")}
+        },
+        "status" => %{terms: %{field: "status", size: Cluster.get_size_field("status")}},
+        "df_type.raw" => %{
+          terms: %{field: "df_type.raw", size: Cluster.get_size_field("df_type.raw")}
+        },
+        "taxonomy" => %{terms: %{field: "domain_ids", size: Cluster.get_size_field("taxonomy")}}
       }
       |> merge_dynamic_fields("quality_control")
     end

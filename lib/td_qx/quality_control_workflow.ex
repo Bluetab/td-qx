@@ -7,10 +7,10 @@ defmodule TdQx.QualityControlWorkflow do
     only: [status_changeset: 2]
 
   alias Ecto.Multi
-  alias TdCore.Search
   alias TdQx.QualityControls
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Repo
+  alias TdQx.Search.Indexer
 
   def create_quality_control(params) do
     Multi.new()
@@ -207,12 +207,12 @@ defmodule TdQx.QualityControlWorkflow do
          {:ok,
           %QualityControlVersion{quality_control_id: quality_control_id} = quality_control_version}
        ) do
-    Search.IndexWorker.reindex(:quality_controls, [quality_control_id])
+    Indexer.reindex([quality_control_id])
     {:ok, quality_control_version}
   end
 
   defp reindex_quality_control({:ok, %{quality_control_version: quality_control_version}}) do
-    Search.IndexWorker.reindex(:quality_controls, [quality_control_version.quality_control_id])
+    Indexer.reindex([quality_control_version.quality_control_id])
     {:ok, quality_control_version}
   end
 
