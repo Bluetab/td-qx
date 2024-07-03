@@ -1,10 +1,16 @@
 # Changelog
 
+## [6.8.0] 2024-07-03
+
+### Added
+
+- [TD-6499] Add content format with data origin
+
 ## [6.7.0] 2024-06-13
 
 ### Changed
 
-- [TD-6561] 
+- [TD-6561]
   - Standardise aggregations limits
   - Use keyword list for elastic search configuration
 - [TD-6402] IndexWorker improvement

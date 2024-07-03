@@ -177,7 +177,7 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
       quality_control_version =
         insert(:quality_control_version,
           df_type: template_name,
-          df_content: %{"foo" => "bar"},
+          df_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
           quality_control: insert(:quality_control)
         )
 
