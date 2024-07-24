@@ -4,7 +4,7 @@
 
 ### Changed
 
-- [TD-6602] Update td-core
+- [TD-6602], [TD-6723] Update td-core
 
 ## [6.8.1] 2024-07-18
 
