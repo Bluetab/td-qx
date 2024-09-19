@@ -19,4 +19,8 @@ defmodule TdQx.DataViews.QueryableProperties.Where do
     |> cast(params, [])
     |> cast_embed(:clauses, with: &Clause.changeset/2, required: true)
   end
+
+  def unfold(%__MODULE__{clauses: clauses}) do
+    %{__type__: "where", clauses: Clause.unfold(clauses)}
+  end
 end

@@ -1,6 +1,7 @@
 defmodule TdQxWeb.QualityControlControllerTest do
   use TdQxWeb.ConnCase
 
+  alias TdCluster.TestHelpers.TdDdMock
   alias TdCluster.TestHelpers.TdDfMock
   alias TdQx.QualityControls.QualityControlVersion
 
@@ -163,7 +164,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
     test "renders quality_control when data is valid", %{conn: conn} do
       params = %{
         "domain_ids" => [1, 2],
-        "name" => "some name"
+        "name" => "some name",
+        "source_id" => 10
       }
 
       conn = post(conn, ~p"/api/quality_controls", quality_control: params)
@@ -198,6 +200,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
       params = %{
         "domain_ids" => [1, 2],
+        "source_id" => 10,
         "name" => "some name",
         "status" => "published",
         "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
@@ -217,8 +220,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "id" => ^id,
                "version" => 1,
                "status" => "published",
-               "df_content" => %{"foo" => "bar"},
-               "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+               "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                "df_type" => "df_type",
                "domain_ids" => [1, 2],
                "name" => "some name",
@@ -242,6 +244,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
     test "renders errors when published version is invalid", %{conn: conn} do
       params = %{
         "domain_ids" => [1, 2],
+        "source_id" => 10,
         "name" => "some name",
         "status" => "published"
       }
@@ -263,6 +266,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
       params = %{
         "domain_ids" => [1, 2],
         "name" => "some name",
+        "source_id" => 10,
         "status" => "pending_approval"
       }
 
@@ -277,7 +281,10 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
       assert %{"domain_ids" => ["can't be blank"]} = json_response(conn, 422)["errors"]
 
-      conn = post(conn, ~p"/api/quality_controls", quality_control: %{domain_ids: [1, 2]})
+      conn =
+        post(conn, ~p"/api/quality_controls",
+          quality_control: %{domain_ids: [1, 2], source_id: 10}
+        )
 
       assert %{"name" => ["can't be blank"]} = json_response(conn, 422)["errors"]
     end
@@ -940,8 +947,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "version" => 1,
                "status" => "draft",
                "df_type" => "df_type",
-               "df_content" => %{"foo" => "bar"},
-               "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+               "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                "resource" => ^resource,
                "validation" => [^clause]
              } = json_response(conn, 200)["data"]
@@ -1064,6 +1070,261 @@ defmodule TdQxWeb.QualityControlControllerTest do
       assert_error_sent(404, fn ->
         get(conn, ~p"/api/quality_controls/#{quality_control}")
       end)
+    end
+  end
+
+  describe "get quality control queries" do
+    @tag authentication: [role: "admin"]
+    test "will return queries for a version", %{conn: conn} do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control),
+          resource: build(:resource, type: "data_structure", id: 888)
+        )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        888,
+        {:ok, %{name: "ds888", metadata: %{}}}
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}/queries")
+
+      assert %{"data" => %{"queries" => queries, "resources_lookup" => lookup}} =
+               json_response(conn, 200)
+
+      assert [
+               %{
+                 "__type__" => "query",
+                 "action" => "count",
+                 "resource" => %{
+                   "__type__" => "data_view",
+                   "queryables" => [%{"__type__" => "from"}],
+                   "resource_refs" => %{"0" => %{"id" => 888}}
+                 }
+               },
+               %{
+                 "__type__" => "query",
+                 "action" => "count",
+                 "resource" => %{
+                   "__type__" => "data_view",
+                   "queryables" => [
+                     %{"__type__" => "from"},
+                     %{"__type__" => "where"}
+                   ]
+                 }
+               }
+             ] = queries
+
+      assert lookup == %{
+               "data_structure:888" => %{"id" => 888, "metadata" => %{}, "name" => "ds888"}
+             }
+    end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls", "create_quality_controls"]
+         ]
+    test "for non admin with permission returns correct queries", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: build(:quality_control, domain_ids: [domain_id]),
+          resource: build(:resource, type: "data_structure", id: 888)
+        )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        888,
+        {:ok, %{name: "ds888", metadata: %{}}}
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}/queries")
+
+      assert %{"data" => %{"queries" => queries, "resources_lookup" => lookup}} =
+               json_response(conn, 200)
+
+      assert [
+               %{
+                 "__type__" => "query",
+                 "action" => "count",
+                 "resource" => %{
+                   "__type__" => "data_view",
+                   "queryables" => [%{"__type__" => "from"}],
+                   "resource_refs" => %{"0" => %{"id" => 888}}
+                 }
+               },
+               %{
+                 "__type__" => "query",
+                 "action" => "count",
+                 "resource" => %{
+                   "__type__" => "data_view",
+                   "queryables" => [
+                     %{"__type__" => "from"},
+                     %{"__type__" => "where"}
+                   ]
+                 }
+               }
+             ] = queries
+
+      assert lookup == %{
+               "data_structure:888" => %{"id" => 888, "metadata" => %{}, "name" => "ds888"}
+             }
+    end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls", "create_quality_controls"]
+         ]
+    test "non admin with permission in different domain does not have access", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: build(:quality_control, domain_ids: [domain_id + 1])
+        )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}/queries")
+      assert json_response(conn, 403)
+    end
+  end
+
+  describe "get quality control queries by source_id" do
+    @tag authentication: [role: "admin"]
+    test "will return queries for a source_id", %{conn: conn} do
+      source_id = 8
+
+      insert(:quality_control_version,
+        status: "published",
+        quality_control: insert(:quality_control, source_id: source_id),
+        resource: build(:resource, type: "data_structure", id: 888)
+      )
+
+      insert(:quality_control_version,
+        status: "published",
+        quality_control: insert(:quality_control, source_id: source_id),
+        resource: build(:resource, type: "data_structure", id: 999)
+      )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        888,
+        {:ok, %{name: "ds888", metadata: %{}}}
+      )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        999,
+        {:ok, %{name: "ds999", metadata: %{}}}
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/queries/#{source_id}")
+
+      assert %{"data" => %{"quality_controls" => quality_controls, "resources_lookup" => lookup}} =
+               json_response(conn, 200)
+
+      assert [
+               %{
+                 "queries" => [
+                   %{
+                     "__type__" => "query",
+                     "action" => "count",
+                     "resource" => %{"queryables" => [%{"__type__" => "from"}]}
+                   },
+                   %{
+                     "__type__" => "query",
+                     "action" => "count",
+                     "resource" => %{
+                       "queryables" => [%{"__type__" => "from"}, %{"__type__" => "where"}]
+                     }
+                   }
+                 ]
+               },
+               %{}
+             ] = quality_controls
+
+      assert lookup == %{
+               "data_structure:888" => %{"id" => 888, "metadata" => %{}, "name" => "ds888"},
+               "data_structure:999" => %{"id" => 999, "metadata" => %{}, "name" => "ds999"}
+             }
+    end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls", "create_quality_controls"]
+         ]
+    test "for non admin with permission returns correct queries", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: build(:quality_control, domain_ids: [domain_id]),
+          resource: build(:resource, type: "data_structure", id: 888)
+        )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        888,
+        {:ok, %{name: "ds888", metadata: %{}}}
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}/queries")
+
+      assert %{"data" => %{"queries" => queries, "resources_lookup" => lookup}} =
+               json_response(conn, 200)
+
+      assert [
+               %{
+                 "__type__" => "query",
+                 "action" => "count",
+                 "resource" => %{
+                   "__type__" => "data_view",
+                   "queryables" => [%{"__type__" => "from"}],
+                   "resource_refs" => %{"0" => %{"id" => 888}}
+                 }
+               },
+               %{
+                 "__type__" => "query",
+                 "action" => "count",
+                 "resource" => %{
+                   "__type__" => "data_view",
+                   "queryables" => [
+                     %{"__type__" => "from"},
+                     %{"__type__" => "where"}
+                   ]
+                 }
+               }
+             ] = queries
+
+      assert lookup == %{
+               "data_structure:888" => %{"id" => 888, "metadata" => %{}, "name" => "ds888"}
+             }
+    end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls", "create_quality_controls"]
+         ]
+    test "non admin with permission in different domain does not have access", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: build(:quality_control, domain_ids: [domain_id + 1])
+        )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}/queries")
+      assert json_response(conn, 403)
     end
   end
 end

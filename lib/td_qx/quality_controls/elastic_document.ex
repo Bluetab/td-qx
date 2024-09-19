@@ -13,7 +13,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
       :name,
       :status,
       :version,
-      :df_content,
+      :content,
       :df_type,
       :result_type,
       :inserted_at,
@@ -28,16 +28,16 @@ defmodule TdQx.QualityControls.ElasticDocument do
 
     @impl Document
     def encode(%{latest_version: version} = quality_control) do
-      df_content =
+      content =
         version
-        |> Map.get(:df_content)
+        |> Map.get(:content)
         |> Format.search_values(quality_control.template)
 
       version
       |> Map.take(@version_keys)
       |> Map.put(:id, quality_control.id)
       |> Map.put(:domain_ids, quality_control.domain_ids)
-      |> Map.put(:df_content, df_content)
+      |> Map.put(:content, content)
     end
   end
 
@@ -45,7 +45,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
     use ElasticDocument
 
     def mappings(_) do
-      content_mappings = %{type: "object", properties: get_dynamic_mappings("quality_control")}
+      content_mappings = %{properties: get_dynamic_mappings("quality_control")}
 
       properties = %{
         id: %{type: "long", index: false},
@@ -55,7 +55,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
         result_type: %{type: "keyword", fields: @raw_sort},
         status: %{type: "keyword"},
         df_type: %{type: "keyword", fields: @raw_sort, null_value: ""},
-        df_content: content_mappings,
+        content: content_mappings,
         updated_at: %{type: "date", format: "strict_date_optional_time||epoch_millis"},
         inserted_at: %{type: "date", format: "strict_date_optional_time||epoch_millis"}
       }
@@ -79,7 +79,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
         },
         "taxonomy" => %{terms: %{field: "domain_ids", size: Cluster.get_size_field("taxonomy")}}
       }
-      |> merge_dynamic_fields("quality_control")
+      |> merge_dynamic_fields("quality_control", "content")
     end
   end
 end

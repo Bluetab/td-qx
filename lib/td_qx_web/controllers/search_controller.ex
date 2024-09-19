@@ -74,11 +74,12 @@ defmodule TdQxWeb.SearchController do
 
     {query, _} = build_query(params, claims)
 
-    search = %{from: page * size, size: size, query: query, sort: sort}
-
-    case Search.search(search, :quality_controls) do
-      {:ok, %{total: _total, results: results}} -> results
-      {:error, error} -> error
-    end
+    %{from: page * size, size: size, query: query, sort: sort}
+    |> Search.search(:quality_controls)
+    |> transform_response
   end
+
+  defp transform_response({:ok, response}), do: transform_response(response)
+  defp transform_response({:error, _} = response), do: response
+  defp transform_response(%{results: results}), do: Enum.map(results, &Map.get(&1, "_source"))
 end

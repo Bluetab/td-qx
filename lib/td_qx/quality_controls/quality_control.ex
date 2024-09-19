@@ -10,6 +10,7 @@ defmodule TdQx.QualityControls.QualityControl do
   schema "quality_controls" do
     field(:domain_ids, {:array, :integer})
     field(:domains, {:array, :map}, virtual: true)
+    field(:source_id, :integer)
     field(:latest_version, :map, virtual: true)
 
     has_many(:versions, QualityControlVersion)
@@ -21,8 +22,8 @@ defmodule TdQx.QualityControls.QualityControl do
   @doc false
   def changeset(quality_control, attrs) do
     quality_control
-    |> cast(attrs, [:domain_ids])
-    |> validate_required([:domain_ids])
+    |> cast(attrs, [:domain_ids, :source_id])
+    |> validate_required([:domain_ids, :source_id])
   end
 
   @doc false

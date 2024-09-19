@@ -19,4 +19,9 @@ defmodule TdQx.DataViews.QueryableProperties.From do
     |> cast(params, [])
     |> cast_embed(:resource, with: &Resource.changeset/2, required: true)
   end
+
+  def unfold(%__MODULE__{resource: resource}, queryable, resource_refs) do
+    {resource_refs, resource, resource_ref} = Resource.unfold(resource, queryable, resource_refs)
+    {resource_refs, %{__type__: "from", resource: resource, resource_ref: resource_ref}}
+  end
 end

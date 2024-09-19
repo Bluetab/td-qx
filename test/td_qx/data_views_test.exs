@@ -358,6 +358,7 @@ defmodule TdQx.DataViewsTest do
       valid_attrs = %{
         name: "data_view",
         created_by_id: 1,
+        source_id: 10,
         queryables: [
           %{
             id: 1,
@@ -413,6 +414,7 @@ defmodule TdQx.DataViewsTest do
         )
 
       assert {:error, %Ecto.Changeset{errors: errors}} = DataViews.create_data_view(invalid_attrs)
+
       assert [{:queryables, {"invalid duplicated alias", []}}] = errors
     end
 
@@ -440,6 +442,7 @@ defmodule TdQx.DataViewsTest do
         )
 
       assert {:error, %Ecto.Changeset{errors: errors}} = DataViews.create_data_view(invalid_attrs)
+
       assert [{:queryables, {"invalid duplicated resources", []}}] = errors
     end
 

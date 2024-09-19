@@ -212,5 +212,11 @@
     "type": "any",
     "class": "aggregator",
     "params": [{ "name": "expression", "type": "any" }]
+  },
+  {
+    "name": "count",
+    "type": "number",
+    "class": "aggregator",
+    "params": [{ "name": "expression", "type": "any" }]
   }
 ]

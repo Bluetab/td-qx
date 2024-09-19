@@ -26,12 +26,14 @@ defmodule TdQxWeb.Router do
       post("/search", SearchController, :create)
       post("/filters", SearchController, :filters)
       get("/reindex", SearchController, :reindex)
+      get("/queries/:source_id", QualityControlController, :queries_by_source_id)
 
       resources "/execution_groups", ExecutionGroupsController, only: [:index, :show, :create]
     end
 
     resources "/quality_controls", QualityControlController,
       only: [:index, :show, :delete, :create] do
+      get("/queries", QualityControlController, :queries)
       get("/versions", QualityControlController, :index_versions)
       get("/published", QualityControlController, :show_published)
       post("/draft", QualityControlController, :create_draft)

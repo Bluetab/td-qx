@@ -12,6 +12,7 @@ defmodule TdQx.DataViews.DataView do
   schema "data_views" do
     field(:name, :string)
     field(:created_by_id, :integer)
+    field(:source_id, :integer)
     field(:description, :string)
 
     embeds_many(:queryables, Queryable, on_replace: :delete)
@@ -24,12 +25,25 @@ defmodule TdQx.DataViews.DataView do
   @doc false
   def changeset(data_view, attrs) do
     data_view
-    |> cast(attrs, [:name, :created_by_id, :description])
+    |> cast(attrs, [:name, :created_by_id, :description, :source_id])
     |> cast_embed(:queryables, with: &Queryable.changeset/2, required: true)
     |> cast_embed(:select, with: &Queryable.changeset_for_select/2, required: true)
-    |> validate_required([:name, :created_by_id])
+    |> validate_required([:name, :created_by_id, :source_id])
     |> validate_unique_queryable_alias
     |> validate_unique_queryable_resources
+  end
+
+  def unfold(%__MODULE__{queryables: queryables, select: select}) do
+    {resource_refs, queryables} = Queryable.unfold(queryables)
+    select = unfold_select(select)
+    %{__type__: "data_view", queryables: queryables, select: select, resource_refs: resource_refs}
+  end
+
+  defp unfold_select(nil), do: nil
+
+  defp unfold_select(select) do
+    {_, [select]} = Queryable.unfold(select)
+    select
   end
 
   defp validate_unique_queryable_alias(changeset) do

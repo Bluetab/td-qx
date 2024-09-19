@@ -20,6 +20,7 @@ defmodule TdQxWeb.DataViewControllerQueryableTest do
 
         data_view_attrs = %{
           name: "data_view",
+          source_id: 10,
           queryables: [
             %{id: 1, type: type, alias: "queryable_alias", properties: properties}
           ],

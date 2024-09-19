@@ -2,7 +2,6 @@ defmodule TdQxWeb.QualityControlJSON do
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
 
-  alias TdDfLib.Content
   alias TdQxWeb.ClauseJSON
   alias TdQxWeb.ResourceJSON
   alias TdQxWeb.ResultCriteriaJSON
@@ -60,6 +59,7 @@ defmodule TdQxWeb.QualityControlJSON do
       id: quality_control.id,
       domain_ids: quality_control.domain_ids,
       domains: quality_control.domains,
+      source_id: quality_control.source_id,
       versions: versions
     }
   end
@@ -77,6 +77,5 @@ defmodule TdQxWeb.QualityControlJSON do
       validation: ClauseJSON.embed_many(quality_control_version.validation),
       updated_at: quality_control_version.updated_at
     }
-    |> Content.legacy_content_support(:df_content)
   end
 end

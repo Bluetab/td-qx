@@ -5,6 +5,7 @@ defmodule TdQxWeb.QualityControlController do
   alias TdQx.QualityControls.Actions
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
+  alias TdQx.QualityControlTransformer
   alias TdQx.QualityControlWorkflow
 
   action_fallback(TdQxWeb.FallbackController)
@@ -123,6 +124,45 @@ defmodule TdQxWeb.QualityControlController do
 
     with {:ok, %QualityControl{}} <- QualityControls.delete_quality_control(quality_control) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def queries(conn, %{"quality_control_id" => id}) do
+    claims = conn.assigns[:current_resource]
+
+    %{latest_version: latest_version} = quality_control = QualityControls.get_quality_control!(id)
+
+    with :ok <- Bodyguard.permit(QualityControls, :show, claims, quality_control) do
+      queries = QualityControlTransformer.queries_from(latest_version)
+      resources_lookup = QualityControlTransformer.build_resources_lookup(queries)
+
+      json(conn, %{
+        data: %{
+          queries: queries,
+          resources_lookup: resources_lookup
+        }
+      })
+    end
+  end
+
+  def queries_by_source_id(conn, %{"source_id" => source_id}) do
+    claims = conn.assigns[:current_resource]
+
+    with :ok <- Bodyguard.permit(QualityControls, :search, claims) do
+      quality_controls =
+        source_id
+        |> QualityControls.list_quality_controls_by_source_id()
+        |> QualityControlTransformer.quality_controls_queries()
+
+      queries = Enum.flat_map(quality_controls, & &1.queries)
+      resources_lookup = QualityControlTransformer.build_resources_lookup(queries)
+
+      json(conn, %{
+        data: %{
+          quality_controls: quality_controls,
+          resources_lookup: resources_lookup
+        }
+      })
     end
   end
 end

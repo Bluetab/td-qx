@@ -2,6 +2,7 @@ defmodule TdQx.Expressions.ExpressionTest do
   use TdQx.DataCase
 
   alias Ecto.Changeset
+  alias TdQx.ExpressionFactory
   alias TdQx.Expressions.Expression
   alias TdQxWeb.ChangesetJSON
 
@@ -246,6 +247,175 @@ defmodule TdQx.Expressions.ExpressionTest do
                  }
                }
              } = errors
+    end
+  end
+
+  describe "Expression.unfold/2" do
+    test "unfolds a constant expression" do
+      type = "string"
+      value = "foo"
+
+      expression = ExpressionFactory.constant(type, value)
+
+      assert Expression.unfold(expression) == %{
+               __type__: "constant",
+               type: type,
+               value: value
+             }
+    end
+
+    test "unfolds a native function expression" do
+      function_type = "boolean"
+      function_name = "empty_string"
+
+      insert(:function,
+        type: function_type,
+        name: function_name,
+        params: [
+          build(:function_param, name: "text", type: "string")
+        ],
+        expression: nil
+      )
+
+      expression =
+        ExpressionFactory.function(
+          type: function_type,
+          name: function_name,
+          args: [
+            ExpressionFactory.function_arg("text", ExpressionFactory.constant("string", "foo"))
+          ]
+        )
+
+      assert Expression.unfold(expression) == %{
+               __type__: "function",
+               type: function_type,
+               name: function_name,
+               args: [
+                 %{
+                   __type__: "function_arg",
+                   name: "text",
+                   expression: %{__type__: "constant", type: "string", value: "foo"}
+                 }
+               ]
+             }
+    end
+
+    test "unfolds handles unmatching function params and args" do
+      insert(:function,
+        type: "boolean",
+        name: "empty_string",
+        params: [
+          build(:function_param, name: "text", type: "string")
+        ],
+        expression: nil
+      )
+
+      expression =
+        ExpressionFactory.function(
+          type: "boolean",
+          name: "empty_string",
+          args: [
+            ExpressionFactory.function_arg(
+              "invalid_arg",
+              ExpressionFactory.constant("string", "foo")
+            )
+          ]
+        )
+
+      assert Expression.unfold(expression) == %{
+               __type__: "function",
+               type: "boolean",
+               name: "empty_string",
+               args: [
+                 %{
+                   __type__: "function_arg",
+                   name: "text",
+                   expression: {:error, :invalid_expression}
+                 }
+               ]
+             }
+    end
+
+    test "unfolds a user function expression" do
+      insert(:function,
+        type: "string",
+        name: "identity",
+        params: [
+          build(:function_param, id: 0, name: "value", type: "string")
+        ],
+        expression: ExpressionFactory.param(0)
+      )
+
+      expression =
+        ExpressionFactory.function(
+          type: "string",
+          name: "identity",
+          args: [
+            ExpressionFactory.function_arg("value", ExpressionFactory.constant("string", "foo"))
+          ]
+        )
+
+      assert Expression.unfold(expression) == %{
+               __type__: "constant",
+               type: "string",
+               value: "foo"
+             }
+    end
+
+    test "unfolds a nested user function expression" do
+      insert(:function,
+        type: "boolean",
+        name: "eq",
+        params: [
+          build(:function_param, id: 0, name: "arg1", type: "string"),
+          build(:function_param, id: 1, name: "arg2", type: "string")
+        ],
+        expression: nil
+      )
+
+      insert(:function,
+        type: "boolean",
+        name: "eq_to_foo",
+        params: [
+          build(:function_param, id: 0, name: "value", type: "string")
+        ],
+        expression:
+          ExpressionFactory.function(
+            type: "boolean",
+            name: "eq",
+            args: [
+              ExpressionFactory.function_arg("arg1", ExpressionFactory.param(0)),
+              ExpressionFactory.function_arg("arg2", ExpressionFactory.constant("string", "foo"))
+            ]
+          )
+      )
+
+      expression =
+        ExpressionFactory.function(
+          type: "boolean",
+          name: "eq_to_foo",
+          args: [
+            ExpressionFactory.function_arg("value", ExpressionFactory.constant("string", "bar"))
+          ]
+        )
+
+      assert Expression.unfold(expression) == %{
+               __type__: "function",
+               type: "boolean",
+               name: "eq",
+               args: [
+                 %{
+                   __type__: "function_arg",
+                   name: "arg1",
+                   expression: %{__type__: "constant", type: "string", value: "bar"}
+                 },
+                 %{
+                   __type__: "function_arg",
+                   name: "arg2",
+                   expression: %{__type__: "constant", type: "string", value: "foo"}
+                 }
+               ]
+             }
     end
   end
 end

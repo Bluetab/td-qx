@@ -145,6 +145,7 @@ defmodule TdQxWeb.DataViewControllerTest do
       data_view_attrs = %{
         name: "some name",
         description: "some description",
+        source_id: 10,
         queryables: [queryable_attrs],
         select: select_attrs
       }

@@ -19,4 +19,14 @@ defmodule TdQx.Expressions.Clause do
     |> cast(params, [])
     |> cast_embed(:expressions, with: &Expression.changeset/2, required: true)
   end
+
+  def unfold([%__MODULE__{} | _] = clauses) do
+    Enum.map(clauses, &unfold/1)
+  end
+
+  def unfold([]), do: []
+
+  def unfold(%__MODULE__{expressions: expressions}) do
+    Enum.map(expressions, &Expression.unfold/1)
+  end
 end
