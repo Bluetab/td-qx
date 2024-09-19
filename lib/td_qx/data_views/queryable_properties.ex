@@ -7,6 +7,7 @@ defmodule TdQx.DataViews.QueryableProperties do
 
   import Ecto.Changeset
 
+  alias Ecto.Query.Builder.GroupBy
   alias TdQx.DataViews.QueryableProperties.From
   alias TdQx.DataViews.QueryableProperties.GroupBy
   alias TdQx.DataViews.QueryableProperties.Join
@@ -29,6 +30,18 @@ defmodule TdQx.DataViews.QueryableProperties do
     |> cast(prop_params, [])
     |> cast_properties_embed(type)
   end
+
+  def unfold(%__MODULE__{from: %From{} = from}, queryable, resource_refs),
+    do: From.unfold(from, queryable, resource_refs)
+
+  def unfold(%__MODULE__{join: %Join{} = join}, queryable, resource_refs),
+    do: Join.unfold(join, queryable, resource_refs)
+
+  def unfold(%__MODULE__{where: %Where{} = where}), do: Where.unfold(where)
+
+  def unfold(%__MODULE__{select: %Select{} = select}), do: Select.unfold(select)
+
+  def unfold(%__MODULE__{group_by: %GroupBy{} = group_by}), do: GroupBy.unfold(group_by)
 
   defp cast_properties_embed(changeset, "join"),
     do: cast_embed(changeset, :join, with: &Join.changeset/2)

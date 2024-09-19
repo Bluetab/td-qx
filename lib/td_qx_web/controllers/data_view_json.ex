@@ -22,6 +22,7 @@ defmodule TdQxWeb.DataViewJSON do
       name: data_view.name,
       description: data_view.description,
       created_by_id: data_view.created_by_id,
+      source_id: data_view.source_id,
       queryables: QueryableJSON.embed_many(data_view),
       select: QueryableJSON.embed_one(data_view.select)
     }

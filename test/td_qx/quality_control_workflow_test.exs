@@ -12,7 +12,8 @@ defmodule TdQx.QualityControlWorkflowTest do
     test "creates quality control and its version" do
       params = %{
         "domain_ids" => [1, 2],
-        "name" => "some name"
+        "name" => "some name",
+        "source_id" => 10
       }
 
       assert {:ok,
@@ -31,7 +32,11 @@ defmodule TdQx.QualityControlWorkflowTest do
         )
 
       assert {:error, %{errors: errors}} =
-               QualityControlWorkflow.create_quality_control(%{name: name, domain_ids: [1, 2]})
+               QualityControlWorkflow.create_quality_control(%{
+                 name: name,
+                 domain_ids: [1, 2],
+                 source_id: 10
+               })
 
       assert [name: {"duplicated_name", []}] = errors
     end
@@ -44,7 +49,11 @@ defmodule TdQx.QualityControlWorkflowTest do
         )
 
       assert {:error, %{errors: errors}} =
-               QualityControlWorkflow.create_quality_control(%{name: name, domain_ids: [1, 2]})
+               QualityControlWorkflow.create_quality_control(%{
+                 name: name,
+                 domain_ids: [1, 2],
+                 source_id: 10
+               })
 
       assert [name: {"duplicated_name", []}] = errors
     end
@@ -52,10 +61,13 @@ defmodule TdQx.QualityControlWorkflowTest do
     test "validates quality control required fields" do
       assert {:error, %{errors: errors}} = QualityControlWorkflow.create_quality_control(%{})
 
-      assert [domain_ids: {"can't be blank", [validation: :required]}] = errors
+      assert [
+               {:domain_ids, {"can't be blank", [validation: :required]}},
+               {:source_id, {"can't be blank", [validation: :required]}}
+             ] = errors
 
       assert {:error, %{errors: errors}} =
-               QualityControlWorkflow.create_quality_control(%{domain_ids: [1, 2]})
+               QualityControlWorkflow.create_quality_control(%{domain_ids: [1, 2], source_id: 10})
 
       assert [name: {"can't be blank", [validation: :required]}] = errors
     end
@@ -63,6 +75,7 @@ defmodule TdQx.QualityControlWorkflowTest do
     test "calls reindex after creation" do
       params = %{
         "domain_ids" => [1, 2],
+        "source_id" => 10,
         "name" => "some name"
       }
 
@@ -73,7 +86,8 @@ defmodule TdQx.QualityControlWorkflowTest do
                 quality_control_id: id,
                 name: "some name",
                 quality_control: %QualityControl{
-                  domain_ids: [1, 2]
+                  domain_ids: [1, 2],
+                  source_id: 10
                 }
               }} = QualityControlWorkflow.create_quality_control(params)
 

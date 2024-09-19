@@ -53,4 +53,24 @@ defmodule TdQx.Expressions.Expression do
   def type(%__MODULE__{shape: "param", value: _}), do: nil
   def type(%__MODULE__{shape: "field", value: %{field: %{type: type}}}), do: type
   def type(_), do: nil
+
+  def unfold(expression, params_context \\ %{})
+
+  def unfold(%__MODULE__{shape: "constant", value: constant}, _),
+    do: ExpressionValue.unfold(constant)
+
+  def unfold(%__MODULE__{shape: "param", value: param}, params_context) do
+    ExpressionValue.unfold(param, params_context)
+  end
+
+  def unfold(%__MODULE__{shape: "field", value: field}, _) do
+    ExpressionValue.unfold(field)
+  end
+
+  def unfold(%__MODULE__{shape: "function", value: function}, params_context),
+    do: ExpressionValue.unfold(function, params_context)
+
+  def unfold(_, _) do
+    {:error, :invalid_expression}
+  end
 end

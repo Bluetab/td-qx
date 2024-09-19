@@ -5,6 +5,7 @@ defmodule TdQx.Expressions.ExpressionValue do
 
   use Ecto.Schema
 
+  alias TdQx.Expressions.ExpressionValue
   alias TdQx.Expressions.ExpressionValues.Constant
   alias TdQx.Expressions.ExpressionValues.Field
   alias TdQx.Expressions.ExpressionValues.Function
@@ -27,6 +28,22 @@ defmodule TdQx.Expressions.ExpressionValue do
     struct
     |> cast(prop_params, [])
     |> cast_expression_value_embed(value_mode)
+  end
+
+  def unfold(%ExpressionValue{constant: %Constant{value: value, type: type}}) do
+    %{__type__: "constant", type: type, value: value}
+  end
+
+  def unfold(%ExpressionValue{field: %Field{id: id, name: name, parent_id: parent_id}}) do
+    %{__type__: "field", id: id, name: name, parent_id: parent_id}
+  end
+
+  def unfold(%ExpressionValue{param: %Param{id: id}}, params_context) do
+    Map.get(params_context, id)
+  end
+
+  def unfold(%ExpressionValue{function: function}, params_context) do
+    Function.unfold(function, params_context)
   end
 
   defp shape_for_value_mode("aggregate_function"), do: "function"

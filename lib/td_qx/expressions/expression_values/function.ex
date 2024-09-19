@@ -5,6 +5,7 @@ defmodule TdQx.Expressions.ExpressionValues.Function do
 
   use Ecto.Schema
 
+  alias TdQx.Expressions.Expression
   alias TdQx.Expressions.ExpressionValues.FunctionArg
   alias TdQx.Functions
   alias TdQx.Functions.Function
@@ -36,6 +37,31 @@ defmodule TdQx.Expressions.ExpressionValues.Function do
     |> validate_function_class(function, function_class)
     |> validate_required([:type, :name])
     |> Function.validate_type()
+  end
+
+  def unfold(%__MODULE__{type: type, name: name, args: args}, params_context) do
+    name
+    |> Functions.get_function_by_name_type(type)
+    |> case do
+      %{expression: nil, params: params} ->
+        applied_args = apply_args(args, params, params_context)
+        %{__type__: "function", type: type, name: name, args: applied_args}
+
+      %{expression: expression, params: params} ->
+        param_name_to_id = Enum.into(params, %{}, &{&1.name, &1.id})
+
+        params_context =
+          Enum.into(
+            args,
+            %{},
+            &{
+              Map.get(param_name_to_id, &1.name),
+              Expression.unfold(&1.expression)
+            }
+          )
+
+        Expression.unfold(expression, params_context)
+    end
   end
 
   defp get_function_params(%Function{params: params}), do: params
@@ -84,4 +110,20 @@ defmodule TdQx.Expressions.ExpressionValues.Function do
 
   defp maybe_atom_to_string(atom) when is_atom(atom), do: Atom.to_string(atom)
   defp maybe_atom_to_string(not_atom), do: not_atom
+
+  defp apply_args(args, params, params_context) do
+    Enum.map(params, fn
+      %{name: name} ->
+        args
+        |> Enum.find_value(fn
+          %{name: ^name, expression: expression} ->
+            expression
+
+          _ ->
+            nil
+        end)
+        |> Expression.unfold(params_context)
+        |> then(&%{__type__: "function_arg", name: name, expression: &1})
+    end)
+  end
 end

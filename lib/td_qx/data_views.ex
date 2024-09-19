@@ -220,7 +220,7 @@ defmodule TdQx.DataViews do
         })
 
       _ ->
-        Logger.warning("Failed to enrich %ReferenceDataset{id: #{id}} from cluster")
+        Logger.warning("Failed to enrich %DataStructure{id: #{id}} from cluster")
         resource
     end
   end

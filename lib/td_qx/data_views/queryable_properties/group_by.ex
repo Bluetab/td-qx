@@ -24,6 +24,14 @@ defmodule TdQx.DataViews.QueryableProperties.GroupBy do
     |> validate_unique_field_alias()
   end
 
+  def unfold(%__MODULE__{group_fields: group_fields, aggregate_fields: aggregate_fields}) do
+    %{
+      __type__: "group_by",
+      group_fields: SelectField.unfold(group_fields),
+      aggregate_fields: SelectField.unfold(aggregate_fields)
+    }
+  end
+
   defp validate_unique_field_alias(changeset) do
     changeset
     |> get_field(:group_fields)
