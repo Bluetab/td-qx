@@ -27,4 +27,21 @@ defmodule TdQx.DataViews.QueryableProperties.Join do
     |> validate_required([:type])
     |> validate_inclusion(:type, @valid_types)
   end
+
+  def unfold(
+        %__MODULE__{type: type, resource: resource, clauses: clauses},
+        queryable,
+        resource_refs
+      ) do
+    {resource_refs, resource, resource_ref} = Resource.unfold(resource, queryable, resource_refs)
+
+    {resource_refs,
+     %{
+       __type__: "join",
+       type: type,
+       resource: resource,
+       resource_ref: resource_ref,
+       clauses: Clause.unfold(clauses)
+     }}
+  end
 end

@@ -27,3 +27,4 @@ td_qx-*.tar
 
 .tool-versions
 .DS_Store
+.elixir_ls

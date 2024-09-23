@@ -30,6 +30,13 @@ defmodule TdQx.QualityControls do
     |> Repo.all()
   end
 
+  def list_quality_controls_by_source_id(source_id) do
+    QualityControl
+    |> where([qc], qc.source_id == ^source_id)
+    |> preload(:published_version)
+    |> Repo.all()
+  end
+
   def quality_control_latest_versions_query do
     latest_version_query =
       from v in QualityControlVersion,

@@ -33,4 +33,8 @@ defmodule TdQx.DataViews.QueryableProperties.Select do
       changeset
     end
   end
+
+  def unfold(%__MODULE__{fields: fields}) do
+    %{__type__: "select", fields: SelectField.unfold(fields)}
+  end
 end

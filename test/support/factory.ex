@@ -51,6 +51,7 @@ defmodule TdQx.Factory do
       name: sequence(:data_view_name, &"DataView #{&1}"),
       description: sequence(:dataset_description, &"dataset description #{&1}"),
       created_by_id: sequence(:created_by_id, & &1),
+      source_id: 10,
       queryables: [
         build(:data_view_queryable)
       ],
@@ -68,6 +69,7 @@ defmodule TdQx.Factory do
       name: sequence(:data_view_name, &"DataView #{&1}"),
       description: sequence(:dataset_description, &"dataset description #{&1}"),
       created_by_id: sequence(:created_by_id, & &1),
+      source_id: sequence(:source_id, & &1),
       queryables: [
         build(:data_view_queryable_params_for)
       ],
@@ -84,7 +86,7 @@ defmodule TdQx.Factory do
     %Queryable{
       id: sequence(:queryable_id, & &1),
       type: "from",
-      alias: sequence(:data_view_alias, &"alias #{&1}"),
+      alias: sequence(:data_view_alias, &"alias_#{&1}"),
       properties: build(:queryable_properties, from: build(:qp_from))
     }
     |> merge_attributes(attrs)
@@ -94,7 +96,7 @@ defmodule TdQx.Factory do
     %Queryable{
       id: sequence(:queryable_id, & &1),
       type: "from",
-      alias: sequence(:data_view_alias, &"alias #{&1}"),
+      alias: sequence(:data_view_alias, &"alias_#{&1}"),
       properties: build(:qp_from)
     }
     |> merge_attributes(attrs)
@@ -107,6 +109,10 @@ defmodule TdQx.Factory do
     do: %QueryableProperties{select: select}
 
   def queryable_properties_factory(%{where: %{} = where}), do: %QueryableProperties{where: where}
+
+  def queryable_properties_factory(%{group_by: %{} = group_by}),
+    do: %QueryableProperties{group_by: group_by}
+
   def queryable_properties_factory(_), do: %QueryableProperties{join: build(:qp_join)}
 
   def qp_join_factory(attrs) do
@@ -138,7 +144,7 @@ defmodule TdQx.Factory do
     %QueryableProperties.SelectField{
       id: sequence(:qp_select_field_id, & &1),
       expression: build(:expression),
-      alias: sequence(:qp_select_field_alias, &"alias #{&1}")
+      alias: sequence(:qp_select_field_alias, &"alias_#{&1}")
     }
     |> merge_attributes(attrs)
   end
@@ -153,6 +159,8 @@ defmodule TdQx.Factory do
   end
 
   def qp_group_by_factory(attrs) do
+    %{name: name, type: type} = insert(:function, class: "aggregator")
+
     %QueryableProperties.GroupBy{
       group_fields: [
         build(:qp_select_field)
@@ -163,11 +171,12 @@ defmodule TdQx.Factory do
             build(:expression,
               shape: "function",
               value:
-                build(:expression_value_factory, %{
+                build(:expression_value, %{
                   function:
                     build(
                       :ev_function,
-                      class: "aggregator"
+                      name: name,
+                      type: type
                     )
                 })
             )
@@ -181,7 +190,7 @@ defmodule TdQx.Factory do
     %QueryableProperties.SelectField{
       id: sequence(:qp_select_field_id, & &1),
       expression: build(:expression_params_for),
-      alias: sequence(:qp_select_field_alias, &"alias #{&1}")
+      alias: sequence(:qp_select_field_alias, &"alias_#{&1}")
     }
     |> merge_attributes(attrs)
   end
@@ -356,7 +365,8 @@ defmodule TdQx.Factory do
 
   def quality_control_factory(attrs) do
     %QualityControl{
-      domain_ids: [1, 2]
+      domain_ids: [1, 2],
+      source_id: 10
     }
     |> merge_attributes(attrs)
   end
@@ -395,6 +405,7 @@ defmodule TdQx.Factory do
     %{
       domain_ids: [1, 2],
       name: sequence(:quality_control_name, &"name #{&1}"),
+      source_id: 10,
       version: 1,
       status: "draft",
       df_content: %{},

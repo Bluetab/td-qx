@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.12.0] 2024-09-23
+
+### Added
+
+- [TD-6220]
+  - Sources on DataViews and QualityControls
+  - Query generator for QualityControls
+
 ## [6.9.2] 2024-07-29
 
 ### Added

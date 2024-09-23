@@ -7,6 +7,9 @@ defmodule TdQx.DataViews.Resource do
 
   import Ecto.Changeset
 
+  alias TdQx.DataViews
+  alias TdQx.DataViews.Queryable
+
   @valid_types ~w|data_structure reference_dataset data_view|
 
   @primary_key false
@@ -21,5 +24,31 @@ defmodule TdQx.DataViews.Resource do
     |> cast(params, [:id, :type])
     |> validate_required([:id, :type])
     |> validate_inclusion(:type, @valid_types)
+  end
+
+  def unfold(
+        %__MODULE__{type: type, id: resource_id},
+        %Queryable{id: id, alias: queryable_alias},
+        resource_refs
+      ) do
+    resource_refs =
+      Map.put_new(resource_refs, id, %{
+        type: type,
+        id: resource_id,
+        alias: queryable_alias
+      })
+
+    resource_value =
+      case type do
+        "data_view" ->
+          resource_id
+          |> DataViews.get_data_view!()
+          |> DataViews.DataView.unfold()
+
+        _ ->
+          nil
+      end
+
+    {resource_refs, resource_value, id}
   end
 end
