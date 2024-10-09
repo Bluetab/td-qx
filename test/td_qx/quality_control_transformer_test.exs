@@ -108,7 +108,8 @@ defmodule TdQx.Expressions.QualityControlTransformerTest do
       from_id = 20
       from = QueryableFactory.from(resource, alias: "from_alias", id: from_id)
 
-      select =
+      %{id: select_queryable_id} =
+        select =
         QueryableFactory.select([
           [alias: "select_field", expression: ExpressionFactory.constant("string", "foo")]
         ])
@@ -166,7 +167,8 @@ defmodule TdQx.Expressions.QualityControlTransformerTest do
                        alias: "select_field",
                        expression: %{__type__: "constant", type: "string", value: "foo"}
                      }
-                   ]
+                   ],
+                   resource_ref: select_queryable_id
                  },
                  resource_refs: %{
                    from_id => %{

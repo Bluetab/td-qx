@@ -28,15 +28,13 @@ defmodule TdQx.DataViews.Resource do
 
   def unfold(
         %__MODULE__{type: type, id: resource_id},
-        %Queryable{id: id, alias: queryable_alias},
-        resource_refs
+        %Queryable{id: id, alias: queryable_alias}
       ) do
-    resource_refs =
-      Map.put_new(resource_refs, id, %{
-        type: type,
-        id: resource_id,
-        alias: queryable_alias
-      })
+    resource_ref = %{
+      type: type,
+      id: resource_id,
+      alias: queryable_alias
+    }
 
     resource_value =
       case type do
@@ -49,6 +47,6 @@ defmodule TdQx.DataViews.Resource do
           nil
       end
 
-    {resource_refs, resource_value, id}
+    {resource_value, id, resource_ref}
   end
 end
