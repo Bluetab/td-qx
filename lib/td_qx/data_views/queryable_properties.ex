@@ -31,17 +31,33 @@ defmodule TdQx.DataViews.QueryableProperties do
     |> cast_properties_embed(type)
   end
 
-  def unfold(%__MODULE__{from: %From{} = from}, queryable, resource_refs),
-    do: From.unfold(from, queryable, resource_refs)
+  defp update_resource_refs(resource_refs, {id, resource_ref}) do
+    Map.put_new(resource_refs, id, resource_ref)
+  end
 
-  def unfold(%__MODULE__{join: %Join{} = join}, queryable, resource_refs),
-    do: Join.unfold(join, queryable, resource_refs)
+  def unfold(%{properties: %{from: %From{} = from}} = queryable, resource_refs) do
+    {resource_ref, from} = From.unfold(from, queryable)
+    {update_resource_refs(resource_refs, resource_ref), from}
+  end
 
-  def unfold(%__MODULE__{where: %Where{} = where}), do: Where.unfold(where)
+  def unfold(%{properties: %{join: %Join{} = join}} = queryable, resource_refs) do
+    {resource_ref, join} = Join.unfold(join, queryable)
+    {update_resource_refs(resource_refs, resource_ref), join}
+  end
 
-  def unfold(%__MODULE__{select: %Select{} = select}), do: Select.unfold(select)
+  def unfold(%{properties: %{where: %Where{} = where}}, resource_refs) do
+    {resource_refs, Where.unfold(where)}
+  end
 
-  def unfold(%__MODULE__{group_by: %GroupBy{} = group_by}), do: GroupBy.unfold(group_by)
+  def unfold(%{properties: %{select: %Select{} = select}} = queryable, resource_refs) do
+    {resource_ref, select} = Select.unfold(select, queryable)
+    {update_resource_refs(resource_refs, resource_ref), select}
+  end
+
+  def unfold(%{properties: %{group_by: %GroupBy{} = group_by}} = queryable, resource_refs) do
+    {resource_ref, group_by} = GroupBy.unfold(group_by, queryable)
+    {update_resource_refs(resource_refs, resource_ref), group_by}
+  end
 
   defp cast_properties_embed(changeset, "join"),
     do: cast_embed(changeset, :join, with: &Join.changeset/2)

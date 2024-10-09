@@ -22,7 +22,8 @@ defmodule TdQx.DataViews.DataViewTest do
       field_alias = "column1"
       field_value = "foo"
 
-      select =
+      %{id: select_queryable_id} =
+        select =
         QueryableFactory.select([
           [alias: field_alias, expression: ExpressionFactory.constant("string", field_value)]
         ])
@@ -44,7 +45,8 @@ defmodule TdQx.DataViews.DataViewTest do
                    alias: field_alias,
                    expression: %{__type__: "constant", type: "string", value: field_value}
                  }
-               ]
+               ],
+               resource_ref: select_queryable_id
              }
 
       assert data_view_queryables == [
@@ -92,7 +94,8 @@ defmodule TdQx.DataViews.DataViewTest do
       resource = build(:resource, type: "data_structure", id: nested_from_resource_id)
       from = QueryableFactory.from(resource, id: nested_from_qid, alias: "nested_from_alias")
 
-      nested_select =
+      %{id: nested_select_id} =
+        nested_select =
         QueryableFactory.select([
           [
             alias: "nested_select_field",
@@ -158,7 +161,8 @@ defmodule TdQx.DataViews.DataViewTest do
       clause = build(:clause, expressions: [expression])
       where = QueryableFactory.where([clause], alias: "where_alias")
 
-      select =
+      %{id: select_queryable_id} =
+        select =
         QueryableFactory.select([
           [alias: "select_field", expression: ExpressionFactory.constant("string", "foo")]
         ])
@@ -197,7 +201,8 @@ defmodule TdQx.DataViews.DataViewTest do
                      value: "foo"
                    }
                  }
-               ]
+               ],
+               resource_ref: select_queryable_id
              }
 
       assert [from, join, where] = queryables
@@ -304,7 +309,8 @@ defmodule TdQx.DataViews.DataViewTest do
                      value: "nested_foo"
                    }
                  }
-               ]
+               ],
+               resource_ref: nested_select_id
              }
 
       assert queryables == [%{__type__: "from", resource_ref: nested_from_qid, resource: nil}]
