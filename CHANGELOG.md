@@ -6,6 +6,10 @@
 
 - [TD-6870] Added missing 'resource_ref' on GroupBy and Select queryables
 
+### Changed
+
+- [TD-6773] Update td-core
+
 ## [6.12.0] 2024-09-23
 
 ### Added
