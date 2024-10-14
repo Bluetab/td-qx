@@ -9,6 +9,7 @@
 ### Changed
 
 - [TD-6773] Update td-core
+- [TD-6617] Update td-core
 
 ## [6.12.0] 2024-09-23
 
