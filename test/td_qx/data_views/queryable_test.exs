@@ -139,7 +139,8 @@ defmodule TdQx.DataViews.QueryableTest do
       field_alias = "column1"
       field_value = "foo"
 
-      select =
+      %{id: select_queryable_id} =
+        select =
         QueryableFactory.select([
           [alias: field_alias, expression: ExpressionFactory.constant("string", field_value)]
         ])
@@ -181,7 +182,8 @@ defmodule TdQx.DataViews.QueryableTest do
                          value: field_value
                        }
                      }
-                   ]
+                   ],
+                   resource_ref: select_queryable_id
                  },
                  resource_refs: %{
                    11 => %{
@@ -214,12 +216,28 @@ defmodule TdQx.DataViews.QueryableTest do
     test "select_field with a constant expression" do
       expression = ExpressionFactory.constant("string", "foo")
 
-      select =
-        QueryableFactory.select([
-          [alias: "COL1", expression: expression]
-        ])
+      queryable_id = 8
+      queryable_alias = "select_alias"
 
-      assert {%{}, [%{__type__: "select", fields: fields}]} = Queryable.unfold(select)
+      select =
+        QueryableFactory.select(
+          [
+            [alias: "COL1", expression: expression]
+          ],
+          id: queryable_id,
+          alias: queryable_alias
+        )
+
+      assert {resource_refs, [%{__type__: "select", fields: fields, resource_ref: ^queryable_id}]} =
+               Queryable.unfold(select)
+
+      assert resource_refs == %{
+               queryable_id => %{
+                 type: "select",
+                 id: nil,
+                 alias: queryable_alias
+               }
+             }
 
       assert fields == [
                %{
@@ -245,12 +263,32 @@ defmodule TdQx.DataViews.QueryableTest do
         [alias: "sum", expression: ExpressionFactory.constant("string", "bar")]
       ]
 
-      group_by = QueryableFactory.group_by(group_fields, agg_fields)
+      queryable_id = 9
+      queryable_alias = "group_by_alias"
 
-      assert {%{},
+      group_by =
+        QueryableFactory.group_by(group_fields, agg_fields,
+          id: queryable_id,
+          alias: queryable_alias
+        )
+
+      assert {resource_refs,
               [
-                %{__type__: "group_by", group_fields: group_fields, aggregate_fields: agg_fields}
+                %{
+                  __type__: "group_by",
+                  group_fields: group_fields,
+                  aggregate_fields: agg_fields,
+                  resource_ref: ^queryable_id
+                }
               ]} = Queryable.unfold(group_by)
+
+      assert resource_refs == %{
+               queryable_id => %{
+                 type: "group_by",
+                 id: nil,
+                 alias: queryable_alias
+               }
+             }
 
       assert group_fields == [
                %{

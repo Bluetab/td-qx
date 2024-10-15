@@ -30,17 +30,16 @@ defmodule TdQx.DataViews.QueryableProperties.Join do
 
   def unfold(
         %__MODULE__{type: type, resource: resource, clauses: clauses},
-        queryable,
-        resource_refs
+        queryable
       ) do
-    {resource_refs, resource, resource_ref} = Resource.unfold(resource, queryable, resource_refs)
+    {resource, id, resource_ref} = Resource.unfold(resource, queryable)
 
-    {resource_refs,
+    {{id, resource_ref},
      %{
        __type__: "join",
        type: type,
        resource: resource,
-       resource_ref: resource_ref,
+       resource_ref: id,
        clauses: Clause.unfold(clauses)
      }}
   end

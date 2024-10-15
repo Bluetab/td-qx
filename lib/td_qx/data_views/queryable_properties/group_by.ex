@@ -7,6 +7,7 @@ defmodule TdQx.DataViews.QueryableProperties.GroupBy do
 
   import Ecto.Changeset
 
+  alias TdQx.DataViews.Queryable
   alias TdQx.DataViews.QueryableProperties.SelectField
   alias TdQx.Helpers
 
@@ -24,14 +25,6 @@ defmodule TdQx.DataViews.QueryableProperties.GroupBy do
     |> validate_unique_field_alias()
   end
 
-  def unfold(%__MODULE__{group_fields: group_fields, aggregate_fields: aggregate_fields}) do
-    %{
-      __type__: "group_by",
-      group_fields: SelectField.unfold(group_fields),
-      aggregate_fields: SelectField.unfold(aggregate_fields)
-    }
-  end
-
   defp validate_unique_field_alias(changeset) do
     changeset
     |> get_field(:group_fields)
@@ -43,5 +36,24 @@ defmodule TdQx.DataViews.QueryableProperties.GroupBy do
     else
       changeset
     end
+  end
+
+  def unfold(
+        %__MODULE__{group_fields: group_fields, aggregate_fields: aggregate_fields},
+        %Queryable{id: id, alias: queryable_alias}
+      ) do
+    resource_ref = %{
+      type: "group_by",
+      id: nil,
+      alias: queryable_alias
+    }
+
+    {{id, resource_ref},
+     %{
+       __type__: "group_by",
+       group_fields: SelectField.unfold(group_fields),
+       aggregate_fields: SelectField.unfold(aggregate_fields),
+       resource_ref: id
+     }}
   end
 end

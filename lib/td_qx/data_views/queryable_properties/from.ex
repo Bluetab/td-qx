@@ -20,8 +20,8 @@ defmodule TdQx.DataViews.QueryableProperties.From do
     |> cast_embed(:resource, with: &Resource.changeset/2, required: true)
   end
 
-  def unfold(%__MODULE__{resource: resource}, queryable, resource_refs) do
-    {resource_refs, resource, resource_ref} = Resource.unfold(resource, queryable, resource_refs)
-    {resource_refs, %{__type__: "from", resource: resource, resource_ref: resource_ref}}
+  def unfold(%__MODULE__{resource: resource}, queryable) do
+    {resource, id, resource_ref} = Resource.unfold(resource, queryable)
+    {{id, resource_ref}, %{__type__: "from", resource: resource, resource_ref: id}}
   end
 end

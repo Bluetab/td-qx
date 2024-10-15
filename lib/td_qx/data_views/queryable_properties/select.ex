@@ -7,6 +7,7 @@ defmodule TdQx.DataViews.QueryableProperties.Select do
 
   import Ecto.Changeset
 
+  alias TdQx.DataViews.Queryable
   alias TdQx.DataViews.QueryableProperties.SelectField
   alias TdQx.Helpers
 
@@ -34,7 +35,17 @@ defmodule TdQx.DataViews.QueryableProperties.Select do
     end
   end
 
-  def unfold(%__MODULE__{fields: fields}) do
-    %{__type__: "select", fields: SelectField.unfold(fields)}
+  def unfold(
+        %__MODULE__{fields: fields},
+        %Queryable{id: id, alias: queryable_alias}
+      ) do
+    resource_ref = %{
+      type: "select",
+      id: nil,
+      alias: queryable_alias
+    }
+
+    {{id, resource_ref},
+     %{__type__: "select", fields: SelectField.unfold(fields), resource_ref: id}}
   end
 end
