@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.16.0] 2024-12-16
+
+### Added
+
+- [TD-6982] Added SSL and ApiKey configuration for Elasticsearch
+
 ## [6.13.0] 2024-10-15
 
 ### Fixed
