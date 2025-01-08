@@ -62,7 +62,7 @@ defmodule TdQxWeb.ExecutionGroupsController do
     params
     |> Map.put("must", Map.delete(must, "executable"))
     |> do_search(claims)
-    |> Enum.filter(&Permissions.is_visible_by_permissions(&1, claims))
+    |> Enum.filter(&Permissions.visible_by_permissions?(&1, claims))
   end
 
   defp do_search(%{} = attr, claims) do
