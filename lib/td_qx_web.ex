@@ -17,8 +17,6 @@ defmodule TdQxWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
-
   def router do
     quote do
       use Phoenix.Router, helpers: true
@@ -26,12 +24,6 @@ defmodule TdQxWeb do
       # Import common connection and controller functions to use in pipelines
       import Plug.Conn
       import Phoenix.Controller
-    end
-  end
-
-  def channel do
-    quote do
-      use Phoenix.Channel
     end
   end
 
@@ -51,8 +43,7 @@ defmodule TdQxWeb do
     quote do
       use Phoenix.VerifiedRoutes,
         endpoint: TdQxWeb.Endpoint,
-        router: TdQxWeb.Router,
-        statics: TdQxWeb.static_paths()
+        router: TdQxWeb.Router
     end
   end
 

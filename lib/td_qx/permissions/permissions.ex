@@ -4,9 +4,9 @@ defmodule TdQx.Permissions do
   """
   alias TdCache.Permissions
 
-  def is_visible_by_permissions(_, %{role: "admin"} = _claims), do: true
+  def visible_by_permissions?(_, %{role: "admin"} = _claims), do: true
 
-  def is_visible_by_permissions(%{domain_ids: domain_ids}, claims) do
+  def visible_by_permissions?(%{domain_ids: domain_ids}, claims) do
     Enum.any?(domain_ids, fn domain ->
       authorized?(claims, :execute_quality_controls, domain)
     end)
