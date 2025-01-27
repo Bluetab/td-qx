@@ -14,7 +14,9 @@ defmodule TdQx.QualityControls.Actions do
     "deprecate",
     "restore",
     "edit",
-    "create_draft"
+    "create_draft",
+    "toggle_active",
+    "delete_score"
   ]
 
   def put_actions(conn, claims, quality_control) do

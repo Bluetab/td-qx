@@ -30,6 +30,20 @@ defmodule TdQx.Expressions.ExpressionValue do
     |> cast_expression_value_embed(value_mode)
   end
 
+  def to_json(%__MODULE__{constant: %Constant{} = constant}),
+    do: Constant.to_json(constant)
+
+  def to_json(%__MODULE__{field: %Field{} = field}),
+    do: Field.to_json(field)
+
+  def to_json(%__MODULE__{function: %Function{} = function}),
+    do: Function.to_json(function)
+
+  def to_json(%__MODULE__{param: %Param{} = param}),
+    do: Param.to_json(param)
+
+  def to_json(_), do: nil
+
   def unfold(%ExpressionValue{constant: %Constant{value: value, type: type}}) do
     %{__type__: "constant", type: type, value: value}
   end

@@ -28,6 +28,16 @@ defmodule TdQx.DataViews.QueryableProperties.Join do
     |> validate_inclusion(:type, @valid_types)
   end
 
+  def to_json(%__MODULE__{} = join) do
+    %{
+      resource: Resource.to_json(join.resource),
+      clauses: Clause.to_json(join.clauses),
+      type: join.type
+    }
+  end
+
+  def to_json(_), do: nil
+
   def unfold(
         %__MODULE__{type: type, resource: resource, clauses: clauses},
         queryable

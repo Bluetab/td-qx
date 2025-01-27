@@ -13,18 +13,26 @@ defmodule TdQx.QualityControlTransformer do
 
   require Logger
 
-  def quality_controls_queries(quality_controls) do
-    quality_controls
-    |> Enum.map(fn
+  def enrich_scores_queries(scores) do
+    Enum.map(scores, fn
       %{
-        id: quality_control_id,
-        published_version: %QualityControlVersion{id: version_id} = version
-      } ->
+        quality_control_version: %QualityControlVersion{} = version
+      } = score ->
         %{
-          queries: queries_from(version),
-          version_id: version_id,
-          quality_control_id: quality_control_id
+          score
+          | quality_control_version: %{version | queries: queries_from(version)}
         }
+
+      score ->
+        score
+    end)
+  end
+
+  def enrich_quality_controls_queries(quality_control_versions) do
+    quality_control_versions
+    |> Enum.map(fn
+      %QualityControlVersion{} = version ->
+        %{version | queries: queries_from(version)}
 
       _ ->
         nil
@@ -32,7 +40,33 @@ defmodule TdQx.QualityControlTransformer do
     |> Enum.reject(&is_nil/1)
   end
 
-  def queries_from(%QualityControlVersion{resource: resource, validation: clauses}) do
+  def queries_from(%TdQx.QualityControls.QualityControlVersion{
+        control_mode: "error_count",
+        control_properties: %{error_count: %{errors_resource: resource}}
+      }) do
+    from = %Queryable{
+      type: "from",
+      id: 0,
+      properties: %QueryableProperties{
+        from: %From{resource: resource}
+      }
+    }
+
+    [
+      %{
+        query_ref: "error_count",
+        __type__: "query",
+        resource: DataView.unfold(%DataView{queryables: [from]}),
+        action: "count"
+      }
+    ]
+  end
+
+  def queries_from(%TdQx.QualityControls.QualityControlVersion{
+        control_mode: mode,
+        control_properties: %{ratio: %{resource: resource, validation: clauses}}
+      })
+      when mode in ["deviation", "percentage"] do
     from = %Queryable{
       type: "from",
       id: 0,
@@ -51,11 +85,13 @@ defmodule TdQx.QualityControlTransformer do
 
     [
       %{
+        query_ref: "total_count",
         __type__: "query",
         resource: DataView.unfold(%DataView{queryables: [from]}),
         action: "count"
       },
       %{
+        query_ref: "validation_count",
         __type__: "query",
         resource: DataView.unfold(%DataView{queryables: [from, where]}),
         action: "count"

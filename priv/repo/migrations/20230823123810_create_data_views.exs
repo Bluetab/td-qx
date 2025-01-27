@@ -8,6 +8,7 @@ defmodule TdQx.Repo.Migrations.CreateDataViews do
       add :description, :string
       add :queryables, {:array, :map}
       add :select, :map
+      add :source_id, :integer, null: false
 
       timestamps(type: :utc_datetime_usec)
     end

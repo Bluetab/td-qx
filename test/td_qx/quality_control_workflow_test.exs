@@ -13,12 +13,14 @@ defmodule TdQx.QualityControlWorkflowTest do
       params = %{
         "domain_ids" => [1, 2],
         "name" => "some name",
+        "control_mode" => "percentage",
         "source_id" => 10
       }
 
       assert {:ok,
               %QualityControlVersion{
                 name: "some name",
+                control_mode: "percentage",
                 quality_control: %QualityControl{
                   domain_ids: [1, 2]
                 }
@@ -34,6 +36,7 @@ defmodule TdQx.QualityControlWorkflowTest do
       assert {:error, %{errors: errors}} =
                QualityControlWorkflow.create_quality_control(%{
                  name: name,
+                 control_mode: "percentage",
                  domain_ids: [1, 2],
                  source_id: 10
                })
@@ -51,6 +54,7 @@ defmodule TdQx.QualityControlWorkflowTest do
       assert {:error, %{errors: errors}} =
                QualityControlWorkflow.create_quality_control(%{
                  name: name,
+                 control_mode: "percentage",
                  domain_ids: [1, 2],
                  source_id: 10
                })
@@ -69,14 +73,18 @@ defmodule TdQx.QualityControlWorkflowTest do
       assert {:error, %{errors: errors}} =
                QualityControlWorkflow.create_quality_control(%{domain_ids: [1, 2], source_id: 10})
 
-      assert [name: {"can't be blank", [validation: :required]}] = errors
+      assert [
+               name: {"can't be blank", [validation: :required]},
+               control_mode: {"can't be blank", [validation: :required]}
+             ] = errors
     end
 
     test "calls reindex after creation" do
       params = %{
         "domain_ids" => [1, 2],
         "source_id" => 10,
-        "name" => "some name"
+        "name" => "some name",
+        "control_mode" => "percentage"
       }
 
       IndexWorkerMock.clear()
@@ -85,6 +93,7 @@ defmodule TdQx.QualityControlWorkflowTest do
               %QualityControlVersion{
                 quality_control_id: id,
                 name: "some name",
+                control_mode: "percentage",
                 quality_control: %QualityControl{
                   domain_ids: [1, 2],
                   source_id: 10
@@ -441,12 +450,11 @@ defmodule TdQx.QualityControlWorkflowTest do
       } do
         quality_control_version =
           insert(:quality_control_version,
-            df_content: nil,
+            dynamic_content: nil,
             df_type: nil,
-            result_criteria: nil,
-            result_type: nil,
-            resource: nil,
-            validation: [],
+            score_criteria: nil,
+            control_mode: nil,
+            control_properties: nil,
             quality_control: insert(:quality_control)
           )
 
@@ -459,12 +467,11 @@ defmodule TdQx.QualityControlWorkflowTest do
                  )
 
         assert [
-                 {:validation, {"can't be blank", [validation: :required]}},
-                 {:resource, {"can't be blank", [validation: :required]}},
-                 {:result_criteria, {"can't be blank", [validation: :required]}},
-                 {:df_content, {"can't be blank", [validation: :required]}},
+                 {:control_properties, {"can't be blank", [validation: :required]}},
+                 {:score_criteria, {"can't be blank", [validation: :required]}},
+                 {:dynamic_content, {"can't be blank", [validation: :required]}},
                  {:df_type, {"can't be blank", [validation: :required]}},
-                 {:result_type, {"can't be blank", [validation: :required]}}
+                 {:control_mode, {"can't be blank", [validation: :required]}}
                ] = errors
       end
     end
@@ -476,12 +483,11 @@ defmodule TdQx.QualityControlWorkflowTest do
 
       quality_control_version =
         insert(:quality_control_version,
-          df_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
+          dynamic_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
           df_type: template_name,
-          result_criteria: %{},
-          result_type: "result_type",
-          resource: build(:resource),
-          validation: [build(:clause)],
+          score_criteria: %{},
+          control_mode: "percentage",
+          control_properties: build(:control_properties),
           quality_control: insert(:quality_control)
         )
 
@@ -490,7 +496,7 @@ defmodule TdQx.QualityControlWorkflowTest do
       assert {:update, %{valid?: false, errors: errors}} =
                QualityControlWorkflow.validate_publish_changeset({:update, changeset}, "publish")
 
-      assert [df_content: {"invalid template", [reason: :template_not_found]}] == errors
+      assert [dynamic_content: {"invalid template", [reason: :template_not_found]}] == errors
     end
 
     test "handles invalid content for template" do
@@ -509,12 +515,11 @@ defmodule TdQx.QualityControlWorkflowTest do
 
       quality_control_version =
         insert(:quality_control_version,
-          df_content: %{"not_foo" => %{"value" => "bar", "origin" => "user"}},
+          dynamic_content: %{"not_foo" => %{"value" => "bar", "origin" => "user"}},
           df_type: template_name,
-          result_criteria: %{},
-          result_type: "result_type",
-          resource: build(:resource),
-          validation: [build(:clause)],
+          score_criteria: %{},
+          control_mode: "percentage",
+          control_properties: build(:control_properties),
           quality_control: insert(:quality_control)
         )
 
@@ -524,7 +529,7 @@ defmodule TdQx.QualityControlWorkflowTest do
                QualityControlWorkflow.validate_publish_changeset({:update, changeset}, "publish")
 
       assert [
-               df_content:
+               dynamic_content:
                  {"foo: can't be blank", [foo: {"can't be blank", [validation: :required]}]}
              ] == errors
     end
@@ -544,12 +549,11 @@ defmodule TdQx.QualityControlWorkflowTest do
 
         quality_control_version =
           insert(:quality_control_version,
-            df_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
+            dynamic_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
             df_type: template_name,
-            result_criteria: %{},
-            result_type: "result_type",
-            resource: build(:resource),
-            validation: [build(:clause)],
+            score_criteria: %{},
+            control_mode: "percentage",
+            control_properties: build(:control_properties),
             quality_control: insert(:quality_control)
           )
 
@@ -572,12 +576,11 @@ defmodule TdQx.QualityControlWorkflowTest do
       } do
         quality_control_version =
           insert(:quality_control_version,
-            df_content: nil,
+            dynamic_content: nil,
             df_type: nil,
-            resource: nil,
-            result_criteria: nil,
-            result_type: nil,
-            validation: [],
+            score_criteria: nil,
+            control_mode: nil,
+            control_properties: nil,
             quality_control: insert(:quality_control)
           )
 
@@ -596,12 +599,11 @@ defmodule TdQx.QualityControlWorkflowTest do
     test "does not validate version fields for action restore" do
       quality_control_version =
         insert(:quality_control_version,
-          df_content: nil,
+          dynamic_content: nil,
           df_type: nil,
-          resource: nil,
-          result_criteria: nil,
-          result_type: nil,
-          validation: [],
+          score_criteria: nil,
+          control_mode: nil,
+          control_properties: nil,
           quality_control: insert(:quality_control)
         )
 

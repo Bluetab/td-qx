@@ -31,7 +31,12 @@ defmodule TdQx.DataViews.QueryablePropertiesTest do
     for type <- ~w|inner full_outer left right| do
       @tag type: type
       test "test valid join type '#{type}' on queryable changeset", %{type: type} do
-        params = string_params_for(:qp_join_params_for, type: type)
+        params =
+          string_params_for(:qp_join_params_for,
+            type: type,
+            resource: build(:resource),
+            clauses: [build(:clause_params_for)]
+          )
 
         assert %{valid?: true} =
                  QueryableProperties.changeset(%QueryableProperties{}, params, "join")

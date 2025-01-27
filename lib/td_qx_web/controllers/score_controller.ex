@@ -1,0 +1,148 @@
+defmodule TdQxWeb.ScoreController do
+  use TdQxWeb, :controller
+
+  alias Ecto.Changeset
+  alias TdQx.QualityControls
+  alias TdQx.QualityControls.QualityControl
+  alias TdQx.QualityControlTransformer
+  alias TdQx.Scores
+  alias TdQx.Scores.Score
+
+  action_fallback(TdQxWeb.FallbackController)
+
+  def index_by_quality_control(conn, %{"quality_control_id" => quality_control_id}) do
+    claims = conn.assigns[:current_resource]
+
+    with {:qc, %QualityControl{} = quality_control} <-
+           {:qc, QualityControls.get_quality_control(quality_control_id)},
+         :ok <- Bodyguard.permit(Scores, :index, claims, quality_control),
+         scores <- Scores.list_scores(quality_control_id: quality_control_id, preload: :status) do
+      render(conn, :index, scores: scores)
+    else
+      {:qc, _} -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  def show(conn, %{"id" => id}) do
+    claims = conn.assigns[:current_resource]
+
+    with {:score, %Score{} = score} <-
+           {:score,
+            Scores.get_score(id,
+              preload: [:status, :events, quality_control_version: :quality_control]
+            )},
+         :ok <- Bodyguard.permit(Scores, :show, claims, score) do
+      render(conn, :show, score: score)
+    else
+      {:score, _} -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  def fetch_pending(conn, params) do
+    claims = conn.assigns[:current_resource]
+
+    params =
+      params
+      |> Map.put("status", "PENDING")
+      |> Map.put("preload", quality_control_version: :quality_control)
+
+    with :ok <- Bodyguard.permit(Scores, :fetch_pending, claims),
+         {:ok, opts} <- cast_params(:fetch_pending, params) do
+      scores = Scores.list_scores(opts)
+
+      Scores.update_scores_quality_control_properties(opts)
+      Scores.insert_event_for_scores(scores, %{type: "QUEUED"})
+
+      enriched_scores = QualityControlTransformer.enrich_scores_queries(scores)
+
+      resources_lookup =
+        enriched_scores
+        |> Enum.flat_map(fn
+          %{quality_control_version: %{queries: nil}} -> []
+          %{quality_control_version: %{queries: queries}} -> queries
+          _ -> []
+        end)
+        |> QualityControlTransformer.build_resources_lookup()
+
+      render(conn, :fetch_pending,
+        scores: enriched_scores,
+        resources_lookup: resources_lookup
+      )
+    end
+  end
+
+  def success(conn, %{"score_id" => score_id} = params) do
+    claims = conn.assigns[:current_resource]
+
+    with :ok <- Bodyguard.permit(Scores, :success, claims),
+         {:score, %Score{} = score} <- {:score, Scores.get_score(score_id)},
+         {:ok, score} <- Scores.updated_succeeded_score(score, params) do
+      render(conn, :show, score: score)
+    else
+      {:score, _} -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  def fail(conn, %{"score_id" => score_id} = params) do
+    claims = conn.assigns[:current_resource]
+
+    with :ok <- Bodyguard.permit(Scores, :fail, claims),
+         {:score, %Score{} = score} <- {:score, Scores.get_score(score_id)},
+         {:ok, score} <- Scores.updated_failed_score(score, params) do
+      render(conn, :show, score: score)
+    else
+      {:score, _} -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  def delete(conn, %{"id" => id}) do
+    claims = conn.assigns[:current_resource]
+
+    with {:score,
+          %Score{
+            quality_control_version: %{quality_control: quality_control}
+          } = score} <-
+           {:score,
+            Scores.get_score(
+              id,
+              preload: [:status, quality_control_version: :quality_control]
+            )},
+         {:valid_status, true} <-
+           {:valid_status, score.status in ["PENDING", "SUCCEEDED", "FAILED"]},
+         :ok <- Bodyguard.permit(Scores, :delete, claims, quality_control),
+         {:ok, %Score{}} <- Scores.delete_score(score) do
+      send_resp(conn, :no_content, "")
+    else
+      {:score, _} -> {:error, :not_found}
+      {:valid_status, _} -> {:error, :unprocessable_entity}
+      error -> error
+    end
+  end
+
+  def cast_params(:fetch_pending, %{} = params) do
+    types = %{
+      sources: {:array, :integer},
+      status: :string,
+      preload: :any
+    }
+
+    {%{}, types}
+    |> Changeset.cast(params, Map.keys(types))
+    |> Changeset.update_change(:status, &String.upcase/1)
+    |> Changeset.validate_required(:sources)
+    |> case do
+      %{valid?: true} = changeset ->
+        {:ok,
+         changeset
+         |> Changeset.apply_changes()
+         |> Keyword.new()}
+
+      error_changeset ->
+        {:error, error_changeset}
+    end
+  end
+end

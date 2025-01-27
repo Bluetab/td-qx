@@ -20,6 +20,12 @@ defmodule TdQx.DataViews.QueryableProperties.Where do
     |> cast_embed(:clauses, with: &Clause.changeset/2, required: true)
   end
 
+  def to_json(%__MODULE__{clauses: clauses}) do
+    %{clauses: Clause.to_json(clauses)}
+  end
+
+  def to_json(_), do: nil
+
   def unfold(%__MODULE__{clauses: clauses}) do
     %{__type__: "where", clauses: Clause.unfold(clauses)}
   end

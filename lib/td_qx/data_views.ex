@@ -147,7 +147,11 @@ defmodule TdQx.DataViews do
 
   defp do_enrich(data_views) when is_list(data_views), do: Enum.map(data_views, &do_enrich/1)
 
-  defp do_enrich(%DataView{queryables: [_ | _] = queryables} = data_view) do
+  defp do_enrich(%DataView{queryables: nil} = data_view) do
+    Map.put(data_view, :queryables, [])
+  end
+
+  defp do_enrich(%DataView{queryables: queryables} = data_view) when is_list(queryables) do
     queryables = Enum.map(queryables, &enrich_queryable/1)
 
     Map.put(data_view, :queryables, queryables)
@@ -188,11 +192,14 @@ defmodule TdQx.DataViews do
             }
           end)
 
-        Map.put(resource, :embedded, %{
-          id: id,
-          name: name,
-          fields: fields
-        })
+        %{
+          resource
+          | embedded: %{
+              id: id,
+              name: name,
+              fields: fields
+            }
+        }
 
       _ ->
         Logger.warning("Failed to enrich %ReferenceDataset{id: #{id}} from cluster")
@@ -213,11 +220,14 @@ defmodule TdQx.DataViews do
             }
           end)
 
-        Map.put(resource, :embedded, %{
-          id: id,
-          name: name,
-          fields: fields
-        })
+        %{
+          resource
+          | embedded: %{
+              id: id,
+              name: name,
+              fields: fields
+            }
+        }
 
       _ ->
         Logger.warning("Failed to enrich %DataStructure{id: #{id}} from cluster")
@@ -242,11 +252,14 @@ defmodule TdQx.DataViews do
             }
           end)
 
-        Map.put(resource, :embedded, %{
-          id: id,
-          name: name,
-          fields: fields
-        })
+        %{
+          resource
+          | embedded: %{
+              id: id,
+              name: name,
+              fields: fields
+            }
+        }
 
       _ ->
         resource

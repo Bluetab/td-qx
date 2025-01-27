@@ -26,6 +26,19 @@ defmodule TdQx.DataViews.Resource do
     |> validate_inclusion(:type, @valid_types)
   end
 
+  def to_json(%__MODULE__{} = resource) do
+    %{
+      id: resource.id,
+      type: resource.type
+    }
+    |> with_embedded(resource)
+  end
+
+  def to_json(_), do: nil
+
+  defp with_embedded(json, %{embedded: %{} = embedded}), do: Map.put(json, :embedded, embedded)
+  defp with_embedded(json, _), do: json
+
   def unfold(
         %__MODULE__{type: type, id: resource_id},
         %Queryable{id: id, alias: queryable_alias}

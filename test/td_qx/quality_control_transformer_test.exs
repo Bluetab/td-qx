@@ -1,34 +1,47 @@
 defmodule TdQx.Expressions.QualityControlTransformerTest do
-  alias TdQx.QualityControls
   use TdQx.DataCase
 
   import ExUnit.CaptureLog
   alias TdCluster.TestHelpers.TdDdMock
   alias TdQx.DataViews.DataView
   alias TdQx.ExpressionFactory
+  alias TdQx.QualityControls
   alias TdQx.QualityControlTransformer
   alias TdQx.QueryableFactory
+  alias TdQx.Scores
 
-  describe "quality_controls_queries/1" do
+  describe "enrich_quality_controls_queries/1" do
     test "returns queries for various QualityControls" do
       source_id = 10
 
       insert(:quality_control_version,
         status: "published",
         quality_control: insert(:quality_control, source_id: source_id),
-        resource: build(:resource, type: "data_structure", id: 888)
+        control_properties:
+          build(:control_properties,
+            ratio:
+              build(:cp_ratio,
+                resource: build(:resource, type: "data_structure", id: 888)
+              )
+          )
       )
 
       insert(:quality_control_version,
         status: "published",
         quality_control: insert(:quality_control, source_id: source_id),
-        resource: build(:resource, type: "data_structure", id: 999)
+        control_properties:
+          build(:control_properties,
+            ratio:
+              build(:cp_ratio,
+                resource: build(:resource, type: "data_structure", id: 999)
+              )
+          )
       )
 
       quality_controls =
         source_id
-        |> QualityControls.list_quality_controls_by_source_id()
-        |> QualityControlTransformer.quality_controls_queries()
+        |> QualityControls.list_published_versions_by_source_id()
+        |> QualityControlTransformer.enrich_quality_controls_queries()
 
       assert [
                %{
@@ -68,19 +81,31 @@ defmodule TdQx.Expressions.QualityControlTransformerTest do
       insert(:quality_control_version,
         status: "published",
         quality_control: insert(:quality_control, source_id: source_id),
-        resource: build(:resource, type: "data_structure", id: 888)
+        control_properties:
+          build(:control_properties,
+            ratio:
+              build(:cp_ratio,
+                resource: build(:resource, type: "data_structure", id: 888)
+              )
+          )
       )
 
       insert(:quality_control_version,
         status: "draft",
         quality_control: insert(:quality_control, source_id: source_id),
-        resource: build(:resource, type: "data_structure", id: 888)
+        control_properties:
+          build(:control_properties,
+            ratio:
+              build(:cp_ratio,
+                resource: build(:resource, type: "data_structure", id: 888)
+              )
+          )
       )
 
       quality_controls =
         source_id
-        |> QualityControls.list_quality_controls_by_source_id()
-        |> QualityControlTransformer.quality_controls_queries()
+        |> QualityControls.list_published_versions_by_source_id()
+        |> QualityControlTransformer.enrich_quality_controls_queries()
 
       assert [
                %{
@@ -98,6 +123,80 @@ defmodule TdQx.Expressions.QualityControlTransformerTest do
                  ]
                }
              ] = quality_controls
+    end
+  end
+
+  describe "enrich_scores_queries/1" do
+    test "returns queries for various QualityControls" do
+      qcv =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control),
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_structure", id: 888)
+                )
+            )
+        )
+
+      insert(:score, quality_control_version: qcv)
+
+      qcv =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control),
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_structure", id: 999)
+                )
+            )
+        )
+
+      insert(:score, quality_control_version: qcv)
+
+      scores =
+        [preload: :quality_control_version]
+        |> Scores.list_scores()
+        |> QualityControlTransformer.enrich_scores_queries()
+
+      assert [
+               %{
+                 quality_control_version: %{
+                   queries: [
+                     %{
+                       __type__: "query",
+                       action: "count",
+                       resource: %{queryables: [%{__type__: "from"}]}
+                     },
+                     %{
+                       __type__: "query",
+                       action: "count",
+                       resource: %{queryables: [%{__type__: "from"}, %{__type__: "where"}]}
+                     }
+                   ]
+                 }
+               },
+               %{
+                 quality_control_version: %{
+                   queries: [
+                     %{
+                       __type__: "query",
+                       action: "count",
+                       resource: %{queryables: [%{__type__: "from"}]}
+                     },
+                     %{
+                       __type__: "query",
+                       action: "count",
+                       resource: %{queryables: [%{__type__: "from"}, %{__type__: "where"}]}
+                     }
+                   ]
+                 }
+               }
+             ] = scores
     end
   end
 
@@ -121,8 +220,14 @@ defmodule TdQx.Expressions.QualityControlTransformerTest do
 
       quality_control_version =
         insert(:quality_control_version,
-          resource: build(:resource, type: "data_view", id: data_view.id),
-          validation: [clause],
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_view", id: data_view.id),
+                  validation: [clause]
+                )
+            ),
           quality_control: insert(:quality_control)
         )
 

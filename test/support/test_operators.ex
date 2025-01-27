@@ -5,6 +5,9 @@ defmodule TdQx.TestOperators do
 
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
+  alias TdQx.Scores.Score
+  alias TdQx.Scores.ScoreEvent
+  alias TdQx.Scores.ScoreGroup
 
   def a <~> b, do: approximately_equal(a, b)
   def a ||| b, do: approximately_equal(sorted(a), sorted(b))
@@ -28,17 +31,30 @@ defmodule TdQx.TestOperators do
 
   defp sorted(list), do: Enum.sort(list)
 
-  ## Equality test for data structures without comparing Ecto associations.
   defp approximately_equal(%QualityControlVersion{} = a, %QualityControlVersion{} = b) do
     drop_fields = [:quality_control]
 
     Map.drop(a, drop_fields) == Map.drop(b, drop_fields)
   end
 
-  ## Equality test for data structures without comparing Ecto associations.
   defp approximately_equal(%QualityControl{} = a, %QualityControl{} = b) do
     drop_fields = [:published_version]
 
+    Map.drop(a, drop_fields) == Map.drop(b, drop_fields)
+  end
+
+  defp approximately_equal(%ScoreGroup{} = a, %ScoreGroup{} = b) do
+    drop_fields = [:scores]
+    Map.drop(a, drop_fields) == Map.drop(b, drop_fields)
+  end
+
+  defp approximately_equal(%Score{} = a, %Score{} = b) do
+    drop_fields = [:group, :quality_control_version, :status, :events]
+    Map.drop(a, drop_fields) == Map.drop(b, drop_fields)
+  end
+
+  defp approximately_equal(%ScoreEvent{} = a, %ScoreEvent{} = b) do
+    drop_fields = [:score]
     Map.drop(a, drop_fields) == Map.drop(b, drop_fields)
   end
 

@@ -85,4 +85,9 @@ defmodule QueryableHelpers do
           )
         ]
       )
+
+  def drop_properties_embedded(%{"resource" => resource} = prop),
+    do: Map.put(prop, "resource", Map.delete(resource, "embedded"))
+
+  def drop_properties_embedded(prop), do: prop
 end

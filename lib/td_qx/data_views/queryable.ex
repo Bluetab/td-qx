@@ -48,6 +48,32 @@ defmodule TdQx.DataViews.Queryable do
     end
   end
 
+  def to_json([%__MODULE__{} | _] = queryables),
+    do: for(queryable <- queryables, do: to_json(queryable))
+
+  def to_json([]), do: []
+
+  def to_json(%__MODULE__{} = queryable) do
+    %{
+      type: queryable.type,
+      properties: QueryableProperties.to_json(queryable.properties)
+    }
+    |> with_id(queryable)
+    |> with_alias(queryable)
+  end
+
+  def to_json(_), do: nil
+
+  defp with_alias(json, %{alias: alias_value}) when is_binary(alias_value),
+    do: Map.put(json, :alias, alias_value)
+
+  defp with_alias(json, _), do: json
+
+  defp with_id(json, %{id: id}) when is_integer(id),
+    do: Map.put(json, :id, id)
+
+  defp with_id(json, _), do: json
+
   def unfold(queryable, resource_refs \\ {%{}, []})
 
   def unfold([%__MODULE__{} | _] = queryables, resource_refs) do

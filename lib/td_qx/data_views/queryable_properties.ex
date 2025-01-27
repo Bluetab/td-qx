@@ -35,6 +35,23 @@ defmodule TdQx.DataViews.QueryableProperties do
     Map.put_new(resource_refs, id, resource_ref)
   end
 
+  def to_json(%__MODULE__{from: %From{} = from}),
+    do: From.to_json(from)
+
+  def to_json(%__MODULE__{group_by: %GroupBy{} = group_by}),
+    do: GroupBy.to_json(group_by)
+
+  def to_json(%__MODULE__{join: %Join{} = join}),
+    do: Join.to_json(join)
+
+  def to_json(%__MODULE__{select: %Select{} = select}),
+    do: Select.to_json(select)
+
+  def to_json(%__MODULE__{where: %Where{} = where}),
+    do: Where.to_json(where)
+
+  def to_json(_), do: nil
+
   def unfold(%{properties: %{from: %From{} = from}} = queryable, resource_refs) do
     {resource_ref, from} = From.unfold(from, queryable)
     {update_resource_refs(resource_refs, resource_ref), from}
