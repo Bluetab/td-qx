@@ -7,14 +7,13 @@ defmodule TdQx.Repo.Migrations.CreateQualityControlVersions do
       add :name, :string, null: false
       add :status, :string, null: false
       add :version, :integer, null: false
-      add :df_content, :map
+      add :dynamic_content, :map
       add :df_type, :string
-      add :result_type, :string
-      add :result_criteria, :map
-      add :resource, :map
-      add :validation, :map
+      add :control_mode, :string
+      add :control_properties, :map
+      add :score_criteria, :map
 
-      timestamps()
+      timestamps(type: :utc_datetime_usec)
     end
 
     create index(:quality_control_versions, [:quality_control_id])

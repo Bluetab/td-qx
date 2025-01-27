@@ -329,7 +329,13 @@ defmodule TdQx.DataViewsTest do
         name: name,
         description: description,
         created_by_id: created_by_id
-      } = valid_attrs = params_for(:data_view_params_for)
+      } =
+        valid_attrs =
+        params_for(:data_view_params_for,
+          queryables: [
+            build(:data_view_queryable_params_for)
+          ]
+        )
 
       assert {:ok, %DataView{} = data_view} = DataViews.create_data_view(valid_attrs)
 
@@ -453,7 +459,11 @@ defmodule TdQx.DataViewsTest do
         params_for(:data_view_params_for,
           queryables: [
             valid_queryable_params_for("from", [alias: "alias1"], resource: resource),
-            valid_queryable_params_for("join", [alias: "alias2"], resource: resource)
+            valid_queryable_params_for("join", [alias: "alias2"],
+              resource: resource,
+              clauses: [build(:clause_params_for)],
+              type: "left"
+            )
           ]
         )
 
@@ -461,7 +471,12 @@ defmodule TdQx.DataViewsTest do
     end
 
     test "update_data_view/2 with valid data updates the data_view" do
-      data_view = insert(:data_view)
+      data_view =
+        insert(:data_view,
+          queryables: [
+            build(:data_view_queryable)
+          ]
+        )
 
       update_attrs = %{name: "updated name", description: "updated description"}
 

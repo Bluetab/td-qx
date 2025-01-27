@@ -1,6 +1,6 @@
-defmodule TdQx.QualityControls.ResultCriterias.ErrorsNumber do
+defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
   @moduledoc """
-  Ecto Schema module for QualityControl ResultCriteria ErrorsNumber
+  Ecto Schema module for QualityControl ScoreCriteria ErrorCount
   """
 
   use Ecto.Schema
@@ -24,4 +24,13 @@ defmodule TdQx.QualityControls.ResultCriterias.ErrorsNumber do
     |> validate_number(:maximum, greater_than_or_equal_to: goal)
     |> validate_required([:goal, :maximum])
   end
+
+  def to_json(%__MODULE__{} = error_count) do
+    %{
+      goal: error_count.goal,
+      maximum: error_count.maximum
+    }
+  end
+
+  def to_json(_), do: nil
 end

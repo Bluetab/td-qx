@@ -38,6 +38,15 @@ defmodule TdQx.DataViews.QueryableProperties.GroupBy do
     end
   end
 
+  def to_json(%__MODULE__{} = group_by) do
+    %{
+      group_fields: SelectField.to_json(group_by.group_fields),
+      aggregate_fields: SelectField.to_json(group_by.aggregate_fields)
+    }
+  end
+
+  def to_json(_), do: nil
+
   def unfold(
         %__MODULE__{group_fields: group_fields, aggregate_fields: aggregate_fields},
         %Queryable{id: id, alias: queryable_alias}

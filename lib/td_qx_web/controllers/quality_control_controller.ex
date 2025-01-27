@@ -8,12 +8,7 @@ defmodule TdQxWeb.QualityControlController do
   alias TdQx.QualityControlTransformer
   alias TdQx.QualityControlWorkflow
 
-  action_fallback(TdQxWeb.FallbackController)
-
-  def index(conn, _params) do
-    quality_controls = QualityControls.list_quality_controls()
-    render(conn, :index, quality_controls: quality_controls)
-  end
+  action_fallback TdQxWeb.FallbackController
 
   def index_versions(conn, %{"quality_control_id" => quality_control_id}) do
     quality_controls = QualityControls.list_quality_control_versions(quality_control_id)
@@ -25,7 +20,7 @@ defmodule TdQxWeb.QualityControlController do
 
     quality_control =
       QualityControls.get_quality_control!(id,
-        enrich: [:domains, :resource],
+        enrich: [:domains, :control_properties],
         preload: [:versions, :published_version]
       )
 
@@ -103,6 +98,29 @@ defmodule TdQxWeb.QualityControlController do
     end
   end
 
+  def update_main(
+        conn,
+        %{
+          "quality_control_id" => quality_control_id,
+          "quality_control" => quality_control_params
+        }
+      ) do
+    claims = conn.assigns[:current_resource]
+
+    quality_control = QualityControls.get_quality_control!(quality_control_id)
+
+    with :ok <- Bodyguard.permit(QualityControls, :update_main, claims, quality_control),
+         {:ok, _} <-
+           QualityControls.update_quality_control(
+             quality_control,
+             quality_control_params
+           ) do
+      render(conn, :show,
+        quality_control: QualityControls.get_quality_control!(quality_control_id)
+      )
+    end
+  end
+
   def update_status(conn, %{
         "quality_control_id" => quality_control_id,
         "action" => action
@@ -129,7 +147,6 @@ defmodule TdQxWeb.QualityControlController do
 
   def queries(conn, %{"quality_control_id" => id}) do
     claims = conn.assigns[:current_resource]
-
     %{latest_version: latest_version} = quality_control = QualityControls.get_quality_control!(id)
 
     with :ok <- Bodyguard.permit(QualityControls, :show, claims, quality_control) do
@@ -151,18 +168,16 @@ defmodule TdQxWeb.QualityControlController do
     with :ok <- Bodyguard.permit(QualityControls, :search, claims) do
       quality_controls =
         source_id
-        |> QualityControls.list_quality_controls_by_source_id()
-        |> QualityControlTransformer.quality_controls_queries()
+        |> QualityControls.list_published_versions_by_source_id()
+        |> QualityControlTransformer.enrich_quality_controls_queries()
 
       queries = Enum.flat_map(quality_controls, & &1.queries)
       resources_lookup = QualityControlTransformer.build_resources_lookup(queries)
 
-      json(conn, %{
-        data: %{
-          quality_controls: quality_controls,
-          resources_lookup: resources_lookup
-        }
-      })
+      render(conn, :index,
+        quality_controls: quality_controls,
+        resources_lookup: resources_lookup
+      )
     end
   end
 end

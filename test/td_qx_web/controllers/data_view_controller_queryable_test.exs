@@ -53,7 +53,7 @@ defmodule TdQxWeb.DataViewControllerQueryableTest do
                  |> get(~p"/api/data_views/#{id}")
                  |> json_response(:ok)
 
-        assert properties == result_properties
+        assert properties == drop_properties_embedded(result_properties)
       end
     end
 
@@ -139,7 +139,7 @@ defmodule TdQxWeb.DataViewControllerQueryableTest do
                |> get(~p"/api/data_views/#{data_view}")
                |> json_response(:ok)
 
-      assert properties == result_properties
+      assert properties == drop_properties_embedded(result_properties)
     end
 
     @tag authentication: [role: "admin"]
@@ -247,13 +247,13 @@ defmodule TdQxWeb.DataViewControllerQueryableTest do
                |> get(~p"/api/data_views/#{data_view}")
                |> json_response(:ok)
 
-      assert from_properties == result_from_properties
-      assert join_properties == result_join_properties
+      assert from_properties == drop_properties_embedded(result_from_properties)
+      assert join_properties == drop_properties_embedded(result_join_properties)
     end
 
     @tag authentication: [role: "admin"]
     test "renders errors when data is invalid", %{conn: conn} do
-      data_view = insert(:data_view)
+      data_view = insert(:data_view, queryables: [build(:data_view_queryable)])
 
       update_attr = %{
         queryables: [

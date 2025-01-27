@@ -8,6 +8,7 @@ defmodule TdQx.QualityControlWorkflow do
 
   alias Ecto.Multi
   alias TdQx.QualityControls
+  alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Repo
   alias TdQx.Search.Indexer
@@ -101,7 +102,7 @@ defmodule TdQx.QualityControlWorkflow do
       when status in ["draft", "pending_approval"],
       do: QualityControlVersion.valid_publish_version(latest_version)
 
-  def valid_action?(%{published_version: %QualityControlVersion{}}, "deprecate"),
+  def valid_action?(%{latest_version: %{status: "published"}}, "deprecate"),
     do: true
 
   def valid_action?(%{latest_version: %{status: "deprecated"}}, "restore"),
@@ -121,6 +122,12 @@ defmodule TdQx.QualityControlWorkflow do
 
   def valid_action?(%{latest_version: %{status: "published"}}, "create_draft"),
     do: true
+
+  def valid_action?(%{latest_version: %{status: status}}, "toggle_active")
+      when status != "deprecated",
+      do: true
+
+  def valid_action?(_, "delete_score"), do: true
 
   def valid_action?(_, _), do: false
 
@@ -203,24 +210,29 @@ defmodule TdQx.QualityControlWorkflow do
   def validate_publish_changeset({:update, _} = change, _), do: change
   def validate_publish_changeset({:delete, _} = change, _), do: change
 
-  defp reindex_quality_control(
-         {:ok,
-          %QualityControlVersion{quality_control_id: quality_control_id} = quality_control_version}
-       ) do
+  def reindex_quality_control(
+        {:ok,
+         %QualityControlVersion{quality_control_id: quality_control_id} = quality_control_version}
+      ) do
     Indexer.reindex([quality_control_id])
     {:ok, quality_control_version}
   end
 
-  defp reindex_quality_control({:ok, %{quality_control_version: quality_control_version}}) do
+  def reindex_quality_control({:ok, %QualityControl{id: id} = quality_control}) do
+    Indexer.reindex([id])
+    {:ok, quality_control}
+  end
+
+  def reindex_quality_control({:ok, %{quality_control_version: quality_control_version}}) do
     Indexer.reindex([quality_control_version.quality_control_id])
     {:ok, quality_control_version}
   end
 
-  defp reindex_quality_control({:error, _, error, _}) do
+  def reindex_quality_control({:error, _, error, _}) do
     {:error, error}
   end
 
-  defp reindex_quality_control({:error, error}) do
+  def reindex_quality_control({:error, error}) do
     {:error, error}
   end
 end

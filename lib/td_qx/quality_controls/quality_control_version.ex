@@ -6,13 +6,11 @@ defmodule TdQx.QualityControls.QualityControlVersion do
   import Ecto.Changeset
 
   alias TdDfLib.Validation
-  alias TdQx.DataViews.Resource
-  alias TdQx.Expressions.Clause
-
   alias TdQx.QualityControls
+  alias TdQx.QualityControls.ControlProperties
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
-  alias TdQx.QualityControls.ResultCriteria
+  alias TdQx.QualityControls.ScoreCriteria
 
   @valid_statuses [
     "draft",
@@ -40,22 +38,25 @@ defmodule TdQx.QualityControls.QualityControlVersion do
     {"deprecated", "restore"}
   ]
 
+  @valid_control_modes ["deviation", "percentage", "error_count"]
+
   schema "quality_control_versions" do
-    belongs_to(:quality_control, QualityControl)
-    field(:name, :string)
-    field(:status, :string, default: "draft")
-    field(:version, :integer, default: 1)
+    field :name, :string
+    field :status, :string, default: "draft"
+    field :version, :integer, default: 1
 
-    field(:df_content, :map)
-    field(:df_type, :string)
+    field :dynamic_content, :map
+    field :df_type, :string
 
-    embeds_one(:result_criteria, ResultCriteria, on_replace: :delete)
-    field(:result_type, :string)
+    field :control_mode, :string
 
-    embeds_one(:resource, Resource, on_replace: :delete)
-    embeds_many(:validation, Clause, on_replace: :delete)
+    belongs_to :quality_control, QualityControl
+    embeds_one :score_criteria, ScoreCriteria, on_replace: :delete
+    embeds_one :control_properties, ControlProperties, on_replace: :delete
 
-    timestamps()
+    field :queries, {:array, :map}, virtual: true
+
+    timestamps(type: :utc_datetime_usec)
   end
 
   def valid_actions, do: @valid_actions
@@ -67,40 +68,56 @@ defmodule TdQx.QualityControls.QualityControlVersion do
     changeset =
       cast(%QualityControlVersion{}, attrs, [
         :name,
-        :df_content,
+        :dynamic_content,
         :df_type,
-        :result_type,
+        :control_mode,
         :status
       ])
 
-    result_type = get_field(changeset, :result_type)
+    control_mode = get_field(changeset, :control_mode)
 
     changeset
-    |> cast_embed(:result_criteria, with: &ResultCriteria.changeset(&1, &2, result_type))
-    |> cast_embed(:resource, with: &Resource.changeset/2)
-    |> cast_embed(:validation, with: &Clause.changeset/2)
+    |> cast_embed(:score_criteria, with: &ScoreCriteria.changeset(&1, &2, control_mode))
+    |> cast_embed(:control_properties, with: &ControlProperties.changeset(&1, &2, control_mode))
     |> put_assoc(:quality_control, quality_control)
     |> put_change(:version, version)
     |> validate_required([
       :name,
       :status,
-      :version
+      :version,
+      :control_mode
     ])
     |> unique_constraint(:unique_name_status, name: "quality_control_versions_name_status_index")
     |> validate_unique_name(quality_control_id)
     |> validate_inclusion(:status, ["draft", "published"])
+    |> validate_inclusion(:control_mode, @valid_control_modes)
     |> maybe_validate_published_status()
   end
 
-  def valid_publish_version(%QualityControlVersion{} = version) do
+  def valid_publish_version(
+        %QualityControlVersion{
+          control_properties: control_properties,
+          score_criteria: score_criteria
+        } =
+          version
+      ) do
+    control_properties = ControlProperties.to_json(control_properties)
+    score_criteria = ScoreCriteria.to_json(score_criteria)
+
     version
-    |> cast(%{}, [
-      :name,
-      :df_content,
-      :df_type,
-      :result_type,
-      :status
-    ])
+    |> cast(
+      %{
+        control_properties: control_properties,
+        score_criteria: score_criteria
+      },
+      [
+        :name,
+        :dynamic_content,
+        :df_type,
+        :control_mode,
+        :status
+      ]
+    )
     |> validate_required([
       :name,
       :status,
@@ -126,17 +143,16 @@ defmodule TdQx.QualityControls.QualityControlVersion do
     changeset =
       cast(quality_control_version, attrs, [
         :name,
-        :df_content,
+        :dynamic_content,
         :df_type,
-        :result_type
+        :control_mode
       ])
 
-    result_type = get_field(changeset, :result_type)
+    control_mode = get_field(changeset, :control_mode)
 
     changeset
-    |> cast_embed(:result_criteria, with: &ResultCriteria.changeset(&1, &2, result_type))
-    |> cast_embed(:resource, with: &Resource.changeset/2)
-    |> cast_embed(:validation, with: &Clause.changeset/2)
+    |> cast_embed(:score_criteria, with: &ScoreCriteria.changeset(&1, &2, control_mode))
+    |> cast_embed(:control_properties, with: &ControlProperties.changeset(&1, &2, control_mode))
     |> validate_required([
       :name,
       :status,
@@ -163,34 +179,36 @@ defmodule TdQx.QualityControls.QualityControlVersion do
   end
 
   def validate_publish_changeset(changeset) do
-    result_type = get_field(changeset, :result_type)
+    control_mode = get_field(changeset, :control_mode)
 
     changeset
     |> validate_required([
       :name,
       :status,
       :version,
-      :df_content,
+      :dynamic_content,
       :df_type,
-      :result_type
+      :control_mode
     ])
-    |> cast_embed(:result_criteria,
-      with: &ResultCriteria.changeset(&1, &2, result_type),
+    |> cast_embed(:score_criteria,
+      with: &ScoreCriteria.changeset(&1, &2, control_mode),
       required: true
     )
-    |> cast_embed(:resource, with: &Resource.changeset/2, required: true)
-    |> cast_embed(:validation, with: &Clause.changeset/2, required: true)
+    |> cast_embed(:control_properties,
+      with: &ControlProperties.changeset(&1, &2, control_mode),
+      required: true
+    )
     |> validate_template()
   end
 
   defp validate_template(%Ecto.Changeset{valid?: true} = changeset) do
     template_name = get_field(changeset, :df_type)
-    content = get_field(changeset, :df_content)
+    dynamic_content = get_field(changeset, :dynamic_content)
 
     validator = Validation.validator(template_name)
 
-    :df_content
-    |> validator.(content)
+    :dynamic_content
+    |> validator.(dynamic_content)
     |> case do
       [] ->
         changeset

@@ -136,8 +136,10 @@ config :td_core, TdCore.Search.Cluster,
     "user" => System.get_env("AGG_USER_SIZE", "500") |> String.to_integer(),
     "system" => System.get_env("AGG_SYSTEM_SIZE", "500") |> String.to_integer(),
     "default" => System.get_env("AGG_DEFAULT_SIZE", "500") |> String.to_integer(),
-    "result_type.raw" => System.get_env("AGG_RESULT_TYPE_RAW_SIZE", "500") |> String.to_integer(),
+    "control_mode.raw" =>
+      System.get_env("AGG_CONTROL_MODE_RAW_SIZE", "500") |> String.to_integer(),
     "status" => System.get_env("AGG_STATUS_SIZE", "500") |> String.to_integer(),
     "df_type.raw" => System.get_env("AGG_DF_TYPE_RAW_SIZE", "500") |> String.to_integer(),
-    "taxonomy" => System.get_env("AGG_TAXONOMY_SIZE", "500") |> String.to_integer()
+    "taxonomy" => System.get_env("AGG_TAXONOMY_SIZE", "500") |> String.to_integer(),
+    "active" => System.get_env("AGG_ACTIVE_SIZE", "500") |> String.to_integer()
   }

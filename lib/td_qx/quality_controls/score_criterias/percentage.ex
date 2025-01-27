@@ -1,6 +1,6 @@
-defmodule TdQx.QualityControls.ResultCriterias.Percentage do
+defmodule TdQx.QualityControls.ScoreCriterias.Percentage do
   @moduledoc """
-  Ecto Schema module for QualityControl ResultCriteria Percentage
+  Ecto Schema module for QualityControl ScoreCriteria Percentage
   """
 
   use Ecto.Schema
@@ -23,4 +23,13 @@ defmodule TdQx.QualityControls.ResultCriterias.Percentage do
     |> validate_number(:minimum, greater_than_or_equal_to: 0, less_than_or_equal_to: goal)
     |> validate_required([:goal, :minimum])
   end
+
+  def to_json(%__MODULE__{} = percentage) do
+    %{
+      goal: percentage.goal,
+      minimum: percentage.minimum
+    }
+  end
+
+  def to_json(_), do: nil
 end

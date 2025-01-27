@@ -29,6 +29,17 @@ Run all aplication tests with `mix test`
 Ready to run in production? Please [check our deployment
 guides](http://www.phoenixframework.org/docs/deployment).
 
+## Environment variables
+
+### Elastic bulk page size configuration
+
+ -BULK_PAGE_SIZE_QUALITY_CONTROLS: default 5000
+
+### Elastic aggregations
+
+- The aggregation variables are defined as follows: AGG\_<AGGREGATION_NAME>\_SIZE
+
+
 ## Built With
 
 - [Phoenix](http://www.phoenixframework.org/) - Web framework

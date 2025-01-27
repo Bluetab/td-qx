@@ -9,21 +9,21 @@ defmodule TdQx.Factory do
   alias TdQx.DataViews.Queryable
   alias TdQx.DataViews.QueryableProperties
   alias TdQx.DataViews.Resource
-
-  alias TdQx.Executions.Execution
-  alias TdQx.Executions.ExecutionGroup
-
   alias TdQx.Expressions.Expression
   alias TdQx.Expressions.ExpressionValue
   alias TdQx.Expressions.ExpressionValues
-
   alias TdQx.Functions.Function
   alias TdQx.Functions.Param
-
+  alias TdQx.QualityControls.ControlProperties
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
-  alias TdQx.QualityControls.ResultCriteria
-  alias TdQx.QualityControls.ResultCriterias
+  alias TdQx.QualityControls.ScoreCriteria
+  alias TdQx.QualityControls.ScoreCriterias
+  alias TdQx.Scores.Score
+  alias TdQx.Scores.ScoreContent
+  alias TdQx.Scores.ScoreContents
+  alias TdQx.Scores.ScoreEvent
+  alias TdQx.Scores.ScoreGroup
 
   def domain_factory do
     %{
@@ -52,9 +52,7 @@ defmodule TdQx.Factory do
       description: sequence(:dataset_description, &"dataset description #{&1}"),
       created_by_id: sequence(:created_by_id, & &1),
       source_id: 10,
-      queryables: [
-        build(:data_view_queryable)
-      ],
+      queryables: [],
       select:
         build(:data_view_queryable,
           type: "select",
@@ -70,9 +68,7 @@ defmodule TdQx.Factory do
       description: sequence(:dataset_description, &"dataset description #{&1}"),
       created_by_id: sequence(:created_by_id, & &1),
       source_id: sequence(:source_id, & &1),
-      queryables: [
-        build(:data_view_queryable_params_for)
-      ],
+      queryables: [],
       select:
         build(:data_view_queryable,
           type: "select",
@@ -82,12 +78,27 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def data_view_queryable_factory(attrs) do
+  def data_view_queryable_factory(%{type: "select"} = attrs) do
+    %Queryable{
+      id: sequence(:queryable_id, & &1),
+      alias: sequence(:data_view_alias, &"alias_#{&1}")
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def data_view_queryable_factory(attrs) when map_size(attrs) == 0 do
     %Queryable{
       id: sequence(:queryable_id, & &1),
       type: "from",
       alias: sequence(:data_view_alias, &"alias_#{&1}"),
       properties: build(:queryable_properties, from: build(:qp_from))
+    }
+  end
+
+  def data_view_queryable_factory(attrs) do
+    %Queryable{
+      id: sequence(:queryable_id, & &1),
+      alias: sequence(:data_view_alias, &"alias_#{&1}")
     }
     |> merge_attributes(attrs)
   end
@@ -115,28 +126,40 @@ defmodule TdQx.Factory do
 
   def queryable_properties_factory(_), do: %QueryableProperties{join: build(:qp_join)}
 
-  def qp_join_factory(attrs) do
+  def qp_join_factory(attrs) when map_size(attrs) == 0 do
     %QueryableProperties.Join{
       resource: build(:resource),
       clauses: [build(:clause)],
       type: "left"
     }
+  end
+
+  def qp_join_factory(attrs) do
+    %QueryableProperties.Join{}
     |> merge_attributes(attrs)
   end
 
-  def qp_join_params_for_factory(attrs) do
+  def qp_join_params_for_factory(attrs) when map_size(attrs) == 0 do
     %QueryableProperties.Join{
       resource: build(:resource),
       clauses: [build(:clause_params_for)],
       type: "left"
     }
+  end
+
+  def qp_join_params_for_factory(attrs) do
+    %QueryableProperties.Join{}
     |> merge_attributes(attrs)
   end
 
-  def qp_from_factory(attrs) do
+  def qp_from_factory(attrs) when map_size(attrs) == 0 do
     %QueryableProperties.From{
       resource: build(:resource)
     }
+  end
+
+  def qp_from_factory(attrs) do
+    %QueryableProperties.From{}
     |> merge_attributes(attrs)
   end
 
@@ -236,11 +259,17 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def resource_factory(attrs) do
+  def resource_factory(attrs) when map_size(attrs) == 0 do
+    %{id: data_view_id} = insert(:data_view)
+
     %Resource{
-      id: sequence(:resource_id, & &1),
+      id: data_view_id,
       type: "data_view"
     }
+  end
+
+  def resource_factory(attrs) do
+    %Resource{}
     |> merge_attributes(attrs)
   end
 
@@ -366,22 +395,8 @@ defmodule TdQx.Factory do
   def quality_control_factory(attrs) do
     %QualityControl{
       domain_ids: [1, 2],
-      source_id: 10
-    }
-    |> merge_attributes(attrs)
-  end
-
-  def execution_groups_factory(attrs) do
-    %ExecutionGroup{
-      df_content: %{},
-      executions: for(_id <- [1, 2, 3], do: execution_factory(%{}))
-    }
-    |> merge_attributes(attrs)
-  end
-
-  def execution_factory(attrs) do
-    %Execution{
-      status: "pending"
+      source_id: 10,
+      active: true
     }
     |> merge_attributes(attrs)
   end
@@ -391,12 +406,11 @@ defmodule TdQx.Factory do
       name: sequence(:quality_control_name, &"name #{&1}"),
       version: 1,
       status: "draft",
-      df_content: %{},
+      dynamic_content: %{},
       df_type: "some df_type",
-      result_criteria: build(:result_criteria),
-      result_type: "percentage",
-      resource: build(:resource),
-      validation: [build(:clause)]
+      control_mode: "percentage",
+      score_criteria: build(:score_criteria),
+      control_properties: build(:control_properties)
     }
     |> merge_attributes(attrs)
   end
@@ -408,12 +422,11 @@ defmodule TdQx.Factory do
       source_id: 10,
       version: 1,
       status: "draft",
-      df_content: %{},
+      dynamic_content: %{},
       df_type: "some df_type",
-      result_criteria: build(:rc_percentage),
-      result_type: "percentage",
-      resource: build(:resource),
-      validation: [build(:clause_params_for)]
+      control_mode: "percentage",
+      control_properties: build(:cp_ratio_params_for),
+      score_criteria: build(:sc_percentage)
     }
     |> merge_attributes(attrs)
   end
@@ -424,47 +437,119 @@ defmodule TdQx.Factory do
       name: sequence(:quality_control_name, &"name #{&1}"),
       version: 1,
       status: "draft",
-      df_content: %{},
+      dynamic_content: %{},
       df_type: "some df_type",
-      result_criteria: build(:rc_percentage),
-      result_type: "percentage",
+      control_mode: "percentage",
+      control_properties: build(:cp_ratio_params_for),
+      score_criteria: build(:sc_percentage)
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def control_properties_factory(%{error_count: %{} = error_count}),
+    do: %ControlProperties{error_count: error_count}
+
+  def control_properties_factory(%{ratio: %{} = ratio}),
+    do: %ControlProperties{ratio: ratio}
+
+  def control_properties_factory(_), do: %ControlProperties{ratio: build(:cp_ratio)}
+
+  def cp_error_count_factory(attrs) do
+    %ControlProperties.ErrorCount{
+      errors_resource: build(:resource)
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def cp_ratio_factory(attrs) do
+    %ControlProperties.Ratio{
+      resource: build(:resource),
+      validation: [build(:clause)]
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def cp_ratio_params_for_factory(attrs) do
+    %ControlProperties.Ratio{
       resource: build(:resource),
       validation: [build(:clause_params_for)]
     }
     |> merge_attributes(attrs)
   end
 
-  def result_criteria_factory(%{deviation: %{} = deviation}),
-    do: %ResultCriteria{deviation: deviation}
+  def score_criteria_factory(%{deviation: %{} = deviation}),
+    do: %ScoreCriteria{deviation: deviation}
 
-  def result_criteria_factory(%{errors_number: %{} = errors_number}),
-    do: %ResultCriteria{errors_number: errors_number}
+  def score_criteria_factory(%{error_count: %{} = error_count}),
+    do: %ScoreCriteria{error_count: error_count}
 
-  def result_criteria_factory(%{percentage: %{} = percentage}),
-    do: %ResultCriteria{percentage: percentage}
+  def score_criteria_factory(%{percentage: %{} = percentage}),
+    do: %ScoreCriteria{percentage: percentage}
 
-  def result_criteria_factory(_), do: %ResultCriteria{percentage: build(:rc_percentage)}
+  def score_criteria_factory(_), do: %ScoreCriteria{percentage: build(:sc_percentage)}
 
-  def rc_deviation_factory(attrs) do
-    %ResultCriterias.Deviation{
+  def sc_deviation_factory(attrs) do
+    %ScoreCriterias.Deviation{
       goal: 5.0,
       maximum: 15.0
     }
     |> merge_attributes(attrs)
   end
 
-  def rc_errors_number_factory(attrs) do
-    %ResultCriterias.ErrorsNumber{
+  def sc_error_count_factory(attrs) do
+    %ScoreCriterias.ErrorCount{
       goal: 10,
       maximum: 100
     }
     |> merge_attributes(attrs)
   end
 
-  def rc_percentage_factory(attrs) do
-    %ResultCriterias.Percentage{
+  def sc_percentage_factory(attrs) do
+    %ScoreCriterias.Percentage{
       goal: 90.0,
       minimum: 75.0
+    }
+    |> merge_attributes(attrs)
+  end
+
+  # Score factory
+  def score_group_factory(attrs) do
+    %ScoreGroup{
+      dynamic_content: %{},
+      df_type: "type",
+      created_by: sequence(:created_by, & &1)
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def score_factory(attrs) do
+    %Score{
+      quality_control_version:
+        build(:quality_control_version, quality_control: build(:quality_control)),
+      execution_timestamp: DateTime.utc_now(),
+      details: %{}
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def score_content_factory(%{ratio: %{} = ratio}),
+    do: %ScoreContent{ratio: ratio}
+
+  def score_content_factory(_), do: %ScoreContent{ratio: build(:sc_ratio)}
+
+  def sc_ratio_factory(attrs) do
+    %ScoreContents.Ratio{
+      total_count: 10,
+      validation_count: 1
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def score_event_factory(attrs) do
+    %ScoreEvent{
+      message: "message",
+      type: "PENDING",
+      score: build(:score)
     }
     |> merge_attributes(attrs)
   end

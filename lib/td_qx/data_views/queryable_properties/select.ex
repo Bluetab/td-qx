@@ -35,6 +35,12 @@ defmodule TdQx.DataViews.QueryableProperties.Select do
     end
   end
 
+  def to_json(%__MODULE__{fields: fields}) do
+    %{fields: SelectField.to_json(fields)}
+  end
+
+  def to_json(_), do: nil
+
   def unfold(
         %__MODULE__{fields: fields},
         %Queryable{id: id, alias: queryable_alias}

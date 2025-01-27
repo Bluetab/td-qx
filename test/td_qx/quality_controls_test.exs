@@ -105,21 +105,25 @@ defmodule TdQx.QualityControlsTest do
       end
     end
 
-    test "change_quality_control/1 returns a quality_control changeset" do
-      quality_control = insert(:quality_control)
-      assert %Ecto.Changeset{} = QualityControls.change_quality_control(quality_control)
+    test "update_quality_control/1 only update active" do
+      %{domain_ids: domain_ids, active: true} = quality_control = insert(:quality_control)
+
+      assert {:ok, %{domain_ids: ^domain_ids, active: false}} =
+               QualityControls.update_quality_control(quality_control, %{
+                 "active" => false,
+                 "domains_ids" => [100]
+               })
     end
   end
 
   describe "quality_control_versions" do
     @invalid_attrs %{
-      df_content: nil,
+      dynamic_content: nil,
       df_type: nil,
-      resource: nil,
-      result_criteria: nil,
-      result_type: nil,
+      score_criteria: nil,
+      control_mode: nil,
       status: nil,
-      validation: nil,
+      control_properties: nil,
       version: nil
     }
 
@@ -149,160 +153,164 @@ defmodule TdQx.QualityControlsTest do
 
       valid_attrs = %{
         name: "some name",
-        df_content: %{},
+        dynamic_content: %{},
         df_type: "some df_type",
-        result_criteria: params_for(:rc_percentage),
-        result_type: "percentage",
-        resource: params_for(:resource),
-        validation: [params_for(:clause_params_for)]
+        score_criteria: params_for(:sc_percentage),
+        control_mode: "percentage",
+        control_properties: params_for(:cp_ratio_params_for)
       }
 
       assert {:ok, %QualityControlVersion{} = quality_control_version} =
                QualityControls.create_quality_control_version(quality_control, valid_attrs)
 
       assert quality_control_version.name == "some name"
-      assert quality_control_version.df_content == %{}
+      assert quality_control_version.dynamic_content == %{}
       assert quality_control_version.df_type == "some df_type"
       assert quality_control_version.status == "draft"
       assert quality_control_version.version == 1
-      assert quality_control_version.result_type == "percentage"
-      assert %{percentage: %{goal: 90.0, minimum: 75.0}} = quality_control_version.result_criteria
-      assert %{id: _, type: "data_view"} = quality_control_version.resource
+      assert quality_control_version.control_mode == "percentage"
+      assert %{percentage: %{goal: 90.0, minimum: 75.0}} = quality_control_version.score_criteria
 
-      assert [
-               %{
-                 expressions: [
-                   %{shape: "constant", value: %{constant: %{type: "string", value: _}}}
+      assert %{
+               ratio: %{
+                 resource: %{id: _, type: "data_view"},
+                 validation: [
+                   %{
+                     expressions: [
+                       %{shape: "constant", value: %{constant: %{type: "string", value: _}}}
+                     ]
+                   }
                  ]
                }
-             ] = quality_control_version.validation
+             } = quality_control_version.control_properties
     end
 
-    test "create_quality_control_version/1 handles invalid result_type" do
+    test "create_quality_control_version/1 handles invalid control_mode" do
       quality_control = insert(:quality_control)
 
-      attrs = params_for(:quality_control_version_params_for, result_type: "invalid_type")
+      attrs = params_for(:quality_control_version_params_for, control_mode: "invalid_type")
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      assert %{result_criteria: %{result_type: ["invalid"]}} = errors_on(changeset)
+      assert %{score_criteria: %{control_mode: ["invalid"]}} = errors_on(changeset)
     end
 
-    test "create_quality_control_version/1 handles invalid deviation result_criteria" do
+    test "create_quality_control_version/1 handles invalid deviation score_criteria" do
       quality_control = insert(:quality_control)
 
-      attrs = params_for(:quality_control_version_params_for, result_type: "deviation")
+      attrs = params_for(:quality_control_version_params_for, control_mode: "deviation")
 
       # Goal < 0
-      attrs = Map.put(attrs, :result_criteria, %{goal: -1})
+      attrs = Map.put(attrs, :score_criteria, %{goal: -1})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{deviation: error}} = errors_on(changeset)
+      %{score_criteria: %{deviation: error}} = errors_on(changeset)
 
       assert %{goal: ["must be greater than or equal to 0"]} = error
 
       # Goal > 100
-      attrs = Map.put(attrs, :result_criteria, %{goal: 101})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 101})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{deviation: error}} = errors_on(changeset)
+      %{score_criteria: %{deviation: error}} = errors_on(changeset)
 
       assert %{goal: ["must be less than or equal to 100"]} = error
 
       # Maximum > 100
-      attrs = Map.put(attrs, :result_criteria, %{goal: 90, maximum: 101})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 90, maximum: 101})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{deviation: error}} = errors_on(changeset)
+      %{score_criteria: %{deviation: error}} = errors_on(changeset)
 
       assert %{maximum: ["must be less than or equal to 100"]} = error
 
       # Maximum < Goal
-      attrs = Map.put(attrs, :result_criteria, %{goal: 50, maximum: 25})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 50, maximum: 25})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{deviation: error}} = errors_on(changeset)
+      %{score_criteria: %{deviation: error}} = errors_on(changeset)
 
       assert %{maximum: ["must be greater than or equal to 50.0"]} = error
     end
 
-    test "create_quality_control_version/1 handles invalid errors_number result_criteria" do
+    test "create_quality_control_version/1 handles invalid error_count score_criteria" do
       quality_control = insert(:quality_control)
 
-      attrs = params_for(:quality_control_version_params_for, result_type: "errors_number")
+      attrs =
+        params_for(:quality_control_version_params_for, control_mode: "error_count")
 
       # Goal < 0
-      attrs = Map.put(attrs, :result_criteria, %{goal: -1})
+      attrs = Map.put(attrs, :score_criteria, %{goal: -1})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{errors_number: error}} = errors_on(changeset)
+      %{score_criteria: %{error_count: error}} = errors_on(changeset)
 
       assert %{goal: ["must be greater than or equal to 0"]} = error
 
       # Maximum < Goal
-      attrs = Map.put(attrs, :result_criteria, %{goal: 50, maximum: 10})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 50, maximum: 10})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{errors_number: error}} = errors_on(changeset)
+      %{score_criteria: %{error_count: error}} = errors_on(changeset)
 
       assert %{maximum: ["must be greater than or equal to 50"]} = error
     end
 
-    test "create_quality_control_version/1 handles invalid percentage result_criteria" do
+    test "create_quality_control_version/1 handles invalid percentage score_criteria" do
       quality_control = insert(:quality_control)
 
-      attrs = params_for(:quality_control_version_params_for, result_type: "percentage")
+      attrs = params_for(:quality_control_version_params_for, control_mode: "percentage")
 
       # Goal < 0
-      attrs = Map.put(attrs, :result_criteria, %{goal: -1})
+      attrs = Map.put(attrs, :score_criteria, %{goal: -1})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{percentage: error}} = errors_on(changeset)
+      %{score_criteria: %{percentage: error}} = errors_on(changeset)
 
       assert %{goal: ["must be greater than or equal to 0"]} = error
 
       # Goal > 100
-      attrs = Map.put(attrs, :result_criteria, %{goal: 101})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 101})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{percentage: error}} = errors_on(changeset)
+      %{score_criteria: %{percentage: error}} = errors_on(changeset)
 
       assert %{goal: ["must be less than or equal to 100"]} = error
 
       # Minimum < 0
-      attrs = Map.put(attrs, :result_criteria, %{goal: 90, minimum: -1})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 90, minimum: -1})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{percentage: error}} = errors_on(changeset)
+      %{score_criteria: %{percentage: error}} = errors_on(changeset)
 
       assert %{minimum: ["must be greater than or equal to 0"]} = error
 
       # Minimum > Goal
-      attrs = Map.put(attrs, :result_criteria, %{goal: 50, minimum: 75})
+      attrs = Map.put(attrs, :score_criteria, %{goal: 50, minimum: 75})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{result_criteria: %{percentage: error}} = errors_on(changeset)
+      %{score_criteria: %{percentage: error}} = errors_on(changeset)
 
       assert %{minimum: ["must be less than or equal to 50.0"]} = error
     end

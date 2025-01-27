@@ -39,6 +39,23 @@ defmodule TdQx.Expressions.ExpressionValues.Function do
     |> Function.validate_type()
   end
 
+  def to_json(%__MODULE__{} = function) do
+    %{
+      type: function.type,
+      name: function.name
+    }
+    |> maybe_with_args(function)
+  end
+
+  def to_json(_), do: nil
+
+  defp maybe_with_args(json, function) do
+    case FunctionArg.to_json(function.args) do
+      nil -> json
+      args -> Map.put(json, :args, args)
+    end
+  end
+
   def unfold(%__MODULE__{type: type, name: name, args: args}, params_context) do
     name
     |> Functions.get_function_by_name_type(type)
