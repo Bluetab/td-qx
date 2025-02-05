@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.0.0] 2025-01-13
+## [Unreleased]
 
 ### Added
 
@@ -11,6 +11,8 @@
   - Updates all default analyzers to take `asciifolding` into account.
   - `search_as_you_type` type for identifiers.
   - Defines scope for native and dynamic fields search.
+
+## [7.0.0] 2025-01-13
 
 ### Changed
 
