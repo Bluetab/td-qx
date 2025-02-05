@@ -169,6 +169,9 @@ defmodule TdQxWeb.DataViewControllerTest do
                |> get(~p"/api/data_views/#{id}")
                |> json_response(:ok)
 
+      queryable =
+        Map.update!(queryable, "properties", &drop_properties_embedded/1)
+
       assert queryable == queryable_attrs
       assert select == select_attrs
     end
@@ -193,7 +196,7 @@ defmodule TdQxWeb.DataViewControllerTest do
   describe "update data_view" do
     @tag authentication: [role: "admin"]
     test "update data_view when data is valid", %{conn: conn} do
-      %{id: id} = data_view = insert(:data_view)
+      %{id: id} = data_view = insert(:data_view, queryables: [build(:data_view_queryable)])
 
       update_attr = %{name: "updated name", description: "updated description"}
 

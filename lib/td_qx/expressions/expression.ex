@@ -54,6 +54,20 @@ defmodule TdQx.Expressions.Expression do
   def type(%__MODULE__{shape: "field", value: %{field: %{type: type}}}), do: type
   def type(_), do: nil
 
+  def to_json([%__MODULE__{} | _] = expressions),
+    do: for(expression <- expressions, do: to_json(expression))
+
+  def to_json([]), do: []
+
+  def to_json(%__MODULE__{} = expression) do
+    %{
+      shape: expression.shape,
+      value: ExpressionValue.to_json(expression.value)
+    }
+  end
+
+  def to_json(_), do: nil
+
   def unfold(expression, params_context \\ %{})
 
   def unfold(%__MODULE__{shape: "constant", value: constant}, _),

@@ -1,6 +1,6 @@
-defmodule TdQx.QualityControls.ResultCriterias.Deviation do
+defmodule TdQx.QualityControls.ScoreCriterias.Deviation do
   @moduledoc """
-  Ecto Schema module for QualityControl ResultCriteria Deviation
+  Ecto Schema module for QualityControl ScoreCriteria Deviation
   """
 
   use Ecto.Schema
@@ -23,4 +23,13 @@ defmodule TdQx.QualityControls.ResultCriterias.Deviation do
     |> validate_number(:maximum, greater_than_or_equal_to: goal, less_than_or_equal_to: 100)
     |> validate_required([:goal, :maximum])
   end
+
+  def to_json(%__MODULE__{} = deviation) do
+    %{
+      goal: deviation.goal,
+      maximum: deviation.maximum
+    }
+  end
+
+  def to_json(_), do: nil
 end

@@ -11,14 +11,6 @@ defmodule TdQxWeb.QualityControlControllerTest do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
-  describe "index" do
-    @tag authentication: [role: "admin"]
-    test "lists all quality_controls", %{conn: conn} do
-      conn = get(conn, ~p"/api/quality_controls")
-      assert json_response(conn, 200)["data"] == []
-    end
-  end
-
   describe "index versions" do
     @tag authentication: [role: "admin"]
     test "lists all versions of a quality_controls", %{conn: conn} do
@@ -55,7 +47,110 @@ defmodule TdQxWeb.QualityControlControllerTest do
         )
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
-      assert %{"_actions" => ["deprecate", "create_draft"]} = json_response(conn, 200)
+
+      assert %{"_actions" => ["deprecate", "create_draft", "toggle_active", "delete_score"]} =
+               json_response(conn, 200)
+    end
+
+    @tag authentication: [role: "admin"]
+    test "will return enriched resources on ratio control_properties", %{conn: conn} do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control),
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_structure", id: 888)
+                )
+            )
+        )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        888,
+        {:ok,
+         %{
+           name: "ds888",
+           data_fields: [
+             %{data_structure_id: 8881, name: "field", metadata: %{}}
+           ]
+         }}
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}")
+
+      assert %{
+               "data" => %{
+                 "control_properties" => %{
+                   "resource" => %{
+                     "embedded" => %{
+                       "name" => "ds888",
+                       "fields" => [
+                         %{
+                           "id" => 8881,
+                           "name" => "field",
+                           "parent_name" => "ds888",
+                           "type" => "string"
+                         }
+                       ]
+                     }
+                   }
+                 }
+               }
+             } = json_response(conn, 200)
+    end
+
+    @tag authentication: [role: "admin"]
+    test "will return enriched resources on error_count control_properties", %{conn: conn} do
+      %{quality_control_id: id} =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: insert(:quality_control),
+          control_mode: "error_count",
+          control_properties:
+            build(:control_properties,
+              error_count:
+                build(:cp_error_count,
+                  errors_resource: build(:resource, type: "data_structure", id: 888)
+                )
+            )
+        )
+
+      TdDdMock.get_latest_structure_version(
+        &Mox.expect/4,
+        888,
+        {:ok,
+         %{
+           name: "ds888",
+           data_fields: [
+             %{data_structure_id: 8881, name: "field", metadata: %{}}
+           ]
+         }}
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}")
+
+      assert %{
+               "data" => %{
+                 "control_properties" => %{
+                   "errors_resource" => %{
+                     "embedded" => %{
+                       "name" => "ds888",
+                       "fields" => [
+                         %{
+                           "id" => 8881,
+                           "name" => "field",
+                           "parent_name" => "ds888",
+                           "type" => "string"
+                         }
+                       ]
+                     }
+                   }
+                 }
+               }
+             } = json_response(conn, 200)
     end
 
     @tag authentication: [role: "admin"]
@@ -67,7 +162,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
         )
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
-      assert %{"_actions" => ["restore"]} = json_response(conn, 200)
+      assert %{"_actions" => ["restore", "delete_score"]} = json_response(conn, 200)
     end
 
     @tag authentication: [role: "admin"]
@@ -75,18 +170,24 @@ defmodule TdQxWeb.QualityControlControllerTest do
       %{quality_control_id: id, df_type: template_name} =
         insert(:quality_control_version,
           status: "draft",
-          validation: [],
+          control_mode: "percentage",
+          control_properties:
+            build(:control_properties,
+              ratio: build(:cp_ratio, validation: [])
+            ),
           quality_control: insert(:quality_control)
         )
 
       TdDfMock.get_template_by_name!(
         &Mox.expect/4,
         template_name,
-        {:ok, %{content: []}}
+        {:ok, %{content: []}},
+        2
       )
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
-      assert %{"_actions" => ["edit"]} = json_response(conn, 200)
+
+      assert %{"_actions" => ["edit", "toggle_active", "delete_score"]} = json_response(conn, 200)
     end
 
     @tag authentication: [role: "admin"]
@@ -105,12 +206,22 @@ defmodule TdQxWeb.QualityControlControllerTest do
       )
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
-      assert %{"_actions" => ["send_to_approval", "publish", "edit"]} = json_response(conn, 200)
+
+      assert %{
+               "_actions" => [
+                 "send_to_approval",
+                 "publish",
+                 "edit",
+                 "toggle_active",
+                 "delete_score"
+               ]
+             } =
+               json_response(conn, 200)
     end
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "for non admin with permission returns correct actions for draft with valid version", %{
       conn: conn,
@@ -135,7 +246,46 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: [
+             "view_quality_controls",
+             "write_quality_controls",
+             "manage_quality_controls"
+           ]
+         ]
+    test "for non admin with permission returns correct actions including toogle_ active", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: id, df_type: template_name} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: build(:quality_control, domain_ids: [domain_id])
+        )
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}},
+        2
+      )
+
+      conn = get(conn, ~p"/api/quality_controls/#{id}")
+
+      assert %{
+               "_actions" => [
+                 "send_to_approval",
+                 "publish",
+                 "edit",
+                 "toggle_active",
+                 "delete_score"
+               ]
+             } =
+               json_response(conn, 200)
+    end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "non admin with permission in different domain does not have access", %{
       conn: conn,
@@ -146,13 +296,6 @@ defmodule TdQxWeb.QualityControlControllerTest do
           status: "draft",
           quality_control: build(:quality_control, domain_ids: [domain_id + 1])
         )
-
-      # TdDfMock.get_template_by_name!(
-      #   &Mox.expect/4,
-      #   template_name,
-      #   {:ok, %{content: []}},
-      #   2
-      # )
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
       assert json_response(conn, 403)
@@ -165,7 +308,9 @@ defmodule TdQxWeb.QualityControlControllerTest do
       params = %{
         "domain_ids" => [1, 2],
         "name" => "some name",
-        "source_id" => 10
+        "control_mode" => "percentage",
+        "source_id" => 10,
+        "active" => false
       }
 
       conn = post(conn, ~p"/api/quality_controls", quality_control: params)
@@ -179,12 +324,12 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "name" => "some name",
                "version" => 1,
                "status" => "draft",
-               "df_content" => nil,
+               "control_mode" => "percentage",
+               "dynamic_content" => nil,
                "df_type" => nil,
-               "resource" => nil,
-               "result_criteria" => nil,
-               "result_type" => nil,
-               "validation" => nil
+               "score_criteria" => nil,
+               "control_properties" => nil,
+               "active" => false
              } = json_response(conn, 200)["data"]
     end
 
@@ -203,12 +348,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
         "source_id" => 10,
         "name" => "some name",
         "status" => "published",
-        "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+        "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
         "df_type" => template_name,
-        "result_criteria" => string_params_for(:rc_percentage),
-        "result_type" => "percentage",
-        "resource" => string_params_for(:resource),
-        "validation" => [string_params_for(:clause_params_for)]
+        "score_criteria" => string_params_for(:sc_percentage),
+        "control_mode" => "percentage",
+        "control_properties" => string_params_for(:cp_ratio_params_for)
       }
 
       conn = post(conn, ~p"/api/quality_controls", quality_control: params)
@@ -220,23 +364,25 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "id" => ^id,
                "version" => 1,
                "status" => "published",
-               "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+               "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                "df_type" => "df_type",
                "domain_ids" => [1, 2],
                "name" => "some name",
-               "resource" => %{"id" => _, "type" => "data_view"},
-               "result_criteria" => %{"goal" => 90.0, "minimum" => 75.0},
-               "result_type" => "percentage",
-               "validation" => [
-                 %{
-                   "expressions" => [
-                     %{
-                       "shape" => "constant",
-                       "value" => %{"type" => "string", "value" => _}
-                     }
-                   ]
-                 }
-               ]
+               "score_criteria" => %{"goal" => 90.0, "minimum" => 75.0},
+               "control_mode" => "percentage",
+               "control_properties" => %{
+                 "resource" => %{"id" => _, "type" => "data_view"},
+                 "validation" => [
+                   %{
+                     "expressions" => [
+                       %{
+                         "shape" => "constant",
+                         "value" => %{"type" => "string", "value" => _}
+                       }
+                     ]
+                   }
+                 ]
+               }
              } = json_response(conn, 200)["data"]
     end
 
@@ -245,6 +391,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
       params = %{
         "domain_ids" => [1, 2],
         "source_id" => 10,
+        "control_mode" => "percentage",
         "name" => "some name",
         "status" => "published"
       }
@@ -252,12 +399,10 @@ defmodule TdQxWeb.QualityControlControllerTest do
       conn = post(conn, ~p"/api/quality_controls", quality_control: params)
 
       assert %{
-               "df_content" => ["can't be blank"],
+               "dynamic_content" => ["can't be blank"],
                "df_type" => ["can't be blank"],
-               "resource" => ["can't be blank"],
-               "result_criteria" => ["can't be blank"],
-               "result_type" => ["can't be blank"],
-               "validation" => ["can't be blank"]
+               "score_criteria" => ["can't be blank"],
+               "control_properties" => ["can't be blank"]
              } = json_response(conn, 422)["errors"]
     end
 
@@ -291,7 +436,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission can create quality control", %{
       conn: conn,
@@ -316,7 +461,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission cant create quality control in different domain", %{
       conn: conn,
@@ -337,7 +482,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user without permission cannot create a published quality control", %{
       conn: conn,
@@ -360,7 +505,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user must have permission in all domains to create quality control", %{
       conn: conn,
@@ -385,8 +530,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
            role: "user",
            permissions: [
              "view_quality_controls",
-             "create_quality_controls",
-             "publish_quality_controls"
+             "manage_quality_controls"
            ]
          ]
     test "user with permission can create a published quality control", %{
@@ -422,7 +566,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
         )
 
       params = %{
-        "name" => "new name"
+        "name" => "new name",
+        "control_mode" => "percentage"
       }
 
       conn = post(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
@@ -433,6 +578,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
       assert %{
                "id" => ^id,
                "name" => "new name",
+               "control_mode" => "percentage",
                "version" => 2,
                "status" => "draft"
              } = json_response(conn, 200)["data"]
@@ -454,19 +600,17 @@ defmodule TdQxWeb.QualityControlControllerTest do
         {:ok, %{content: [%{"name" => "group", "fields" => [%{"name" => "foo"}]}]}}
       )
 
-      result_criteria = string_params_for(:rc_percentage)
-      resource = string_params_for(:resource)
-      clause = string_params_for(:clause_params_for)
+      score_criteria = string_params_for(:sc_percentage)
+      control_properties = string_params_for(:cp_ratio_params_for)
 
       params = %{
         "name" => "some name",
         "status" => "published",
-        "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+        "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
         "df_type" => template_name,
-        "result_criteria" => result_criteria,
-        "result_type" => "percentage",
-        "resource" => resource,
-        "validation" => [clause]
+        "score_criteria" => score_criteria,
+        "control_mode" => "percentage",
+        "control_properties" => control_properties
       }
 
       conn = post(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
@@ -480,15 +624,14 @@ defmodule TdQxWeb.QualityControlControllerTest do
                  "id" => id,
                  "version" => 2,
                  "status" => "published",
-                 "df_content" => %{"foo" => "bar"},
+                 "dynamic_content" => %{"foo" => "bar"},
                  "dinamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
                  "df_type" => "df_type",
                  "domain_ids" => [1, 2],
                  "name" => "some name",
-                 "result_criteria" => result_criteria,
-                 "result_type" => "percentage",
-                 "resource" => resource,
-                 "validation" => [clause]
+                 "score_criteria" => score_criteria,
+                 "control_mode" => "percentage",
+                 "control_properties" => control_properties
                }
              ] ||| json_response(conn, 200)["data"]
     end
@@ -509,12 +652,11 @@ defmodule TdQxWeb.QualityControlControllerTest do
       conn = post(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
 
       assert %{
-               "df_content" => ["can't be blank"],
+               "dynamic_content" => ["can't be blank"],
                "df_type" => ["can't be blank"],
-               "resource" => ["can't be blank"],
-               "result_criteria" => ["can't be blank"],
-               "result_type" => ["can't be blank"],
-               "validation" => ["can't be blank"]
+               "score_criteria" => ["can't be blank"],
+               "control_mode" => ["can't be blank"],
+               "control_properties" => ["can't be blank"]
              } = json_response(conn, 422)["errors"]
     end
 
@@ -564,7 +706,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission can create quality control draft", %{
       conn: conn,
@@ -594,7 +736,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission cant create quality control draft in different domain", %{
       conn: conn,
@@ -620,7 +762,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user without permission cannot create a published quality control draft", %{
       conn: conn,
@@ -648,7 +790,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user must have permission in all domains to create quality control draft", %{
       conn: conn,
@@ -677,8 +819,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
            role: "user",
            permissions: [
              "view_quality_controls",
-             "create_quality_controls",
-             "publish_quality_controls"
+             "manage_quality_controls"
            ]
          ]
     test "user with permission can create a published quality control draft", %{
@@ -834,7 +975,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission can update draft to pending approval", %{
       conn: conn,
@@ -859,7 +1000,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission cant update draft to pending approval in different domain", %{
       conn: conn,
@@ -884,7 +1025,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user without publish permission cannot do so", %{
       conn: conn,
@@ -914,18 +1055,16 @@ defmodule TdQxWeb.QualityControlControllerTest do
       %{quality_control_id: qc_id} =
         insert(:quality_control_version, version: 1, quality_control: insert(:quality_control))
 
-      resource = string_params_for(:resource)
-      clause = string_params_for(:clause_params_for)
+      control_properties = string_params_for(:cp_ratio_params_for)
 
       params = %{
         "name" => "new name",
-        "resource" => resource,
-        "validation" => [clause],
         "df_type" => "df_type",
-        "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+        "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
         "status" => "not_changed",
         "version" => 10,
-        "domain_ids" => [5, 6]
+        "domain_ids" => [5, 6],
+        "control_properties" => control_properties
       }
 
       TdDfMock.get_template_by_name!(
@@ -947,10 +1086,12 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "version" => 1,
                "status" => "draft",
                "df_type" => "df_type",
-               "df_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
-               "resource" => ^resource,
-               "validation" => [^clause]
+               "dynamic_content" => %{"foo" => %{"value" => "bar", "origin" => "user"}},
+               "control_properties" => result_control_properties
              } = json_response(conn, 200)["data"]
+
+      assert control_properties ==
+               QueryableHelpers.drop_properties_embedded(result_control_properties)
     end
 
     @tag authentication: [role: "admin"]
@@ -999,7 +1140,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission can update quality control draft", %{
       conn: conn,
@@ -1032,7 +1173,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "user with permission cant update quality control draft in different domain", %{
       conn: conn,
@@ -1058,6 +1199,64 @@ defmodule TdQxWeb.QualityControlControllerTest do
       conn = patch(conn, ~p"/api/quality_controls/#{qc_id}/draft", quality_control: params)
       assert json_response(conn, 403)
     end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls", "manage_quality_controls"]
+         ]
+    test "user with permission can update main quality control", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control:
+            build(:quality_control,
+              domain_ids: [domain_id]
+            )
+        )
+
+      %{id: new_domain_id} = CacheHelpers.insert_domain()
+
+      params = %{
+        domain_ids: [new_domain_id],
+        active: false
+      }
+
+      conn = patch(conn, ~p"/api/quality_controls/#{qc_id}/main", quality_control: params)
+
+      assert %{"id" => ^qc_id, "domain_ids" => [^new_domain_id], "active" => false} =
+               json_response(conn, 200)["data"]
+    end
+
+    @tag authentication: [
+           role: "user",
+           permissions: ["view_quality_controls"]
+         ]
+    test "user without permission cant update main quality control", %{
+      conn: conn,
+      domain: %{id: domain_id}
+    } do
+      %{quality_control_id: qc_id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control:
+            build(:quality_control,
+              domain_ids: [domain_id]
+            )
+        )
+
+      %{id: new_domain_id} = CacheHelpers.insert_domain()
+
+      params = %{
+        domain_ids: [new_domain_id],
+        active: false
+      }
+
+      conn = patch(conn, ~p"/api/quality_controls/#{qc_id}/main", quality_control: params)
+      assert json_response(conn, 403)
+    end
   end
 
   describe "delete quality_control" do
@@ -1080,7 +1279,13 @@ defmodule TdQxWeb.QualityControlControllerTest do
         insert(:quality_control_version,
           status: "published",
           quality_control: insert(:quality_control),
-          resource: build(:resource, type: "data_structure", id: 888)
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_structure", id: 888)
+                )
+            )
         )
 
       TdDdMock.get_latest_structure_version(
@@ -1124,7 +1329,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "for non admin with permission returns correct queries", %{
       conn: conn,
@@ -1134,7 +1339,13 @@ defmodule TdQxWeb.QualityControlControllerTest do
         insert(:quality_control_version,
           status: "draft",
           quality_control: build(:quality_control, domain_ids: [domain_id]),
-          resource: build(:resource, type: "data_structure", id: 888)
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_structure", id: 888)
+                )
+            )
         )
 
       TdDdMock.get_latest_structure_version(
@@ -1178,7 +1389,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "non admin with permission in different domain does not have access", %{
       conn: conn,
@@ -1203,13 +1414,25 @@ defmodule TdQxWeb.QualityControlControllerTest do
       insert(:quality_control_version,
         status: "published",
         quality_control: insert(:quality_control, source_id: source_id),
-        resource: build(:resource, type: "data_structure", id: 888)
+        control_properties:
+          build(:control_properties,
+            ratio:
+              build(:cp_ratio,
+                resource: build(:resource, type: "data_structure", id: 888)
+              )
+          )
       )
 
       insert(:quality_control_version,
         status: "published",
         quality_control: insert(:quality_control, source_id: source_id),
-        resource: build(:resource, type: "data_structure", id: 999)
+        control_properties:
+          build(:control_properties,
+            ratio:
+              build(:cp_ratio,
+                resource: build(:resource, type: "data_structure", id: 999)
+              )
+          )
       )
 
       TdDdMock.get_latest_structure_version(
@@ -1257,7 +1480,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "for non admin with permission returns correct queries", %{
       conn: conn,
@@ -1267,7 +1490,13 @@ defmodule TdQxWeb.QualityControlControllerTest do
         insert(:quality_control_version,
           status: "draft",
           quality_control: build(:quality_control, domain_ids: [domain_id]),
-          resource: build(:resource, type: "data_structure", id: 888)
+          control_properties:
+            build(:control_properties,
+              ratio:
+                build(:cp_ratio,
+                  resource: build(:resource, type: "data_structure", id: 888)
+                )
+            )
         )
 
       TdDdMock.get_latest_structure_version(
@@ -1311,7 +1540,7 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
     @tag authentication: [
            role: "user",
-           permissions: ["view_quality_controls", "create_quality_controls"]
+           permissions: ["view_quality_controls", "write_quality_controls"]
          ]
     test "non admin with permission in different domain does not have access", %{
       conn: conn,

@@ -22,4 +22,20 @@ defmodule TdQx.Functions.Param do
     |> validate_required([:id, :name, :type])
     |> Function.validate_type()
   end
+
+  def to_json([%__MODULE__{} | _] = params),
+    do: for(param <- params, do: to_json(param))
+
+  def to_json([]), do: []
+
+  def to_json(%__MODULE__{} = param) do
+    %{
+      id: param.id,
+      name: param.name,
+      type: param.type,
+      description: param.description
+    }
+  end
+
+  def to_json(_), do: nil
 end

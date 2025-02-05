@@ -8,6 +8,7 @@ defmodule TdQx.QualityControls do
   alias TdCache.TaxonomyCache
 
   alias TdQx.DataViews
+  alias TdQx.QualityControls.ControlProperties
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
 
@@ -30,10 +31,11 @@ defmodule TdQx.QualityControls do
     |> Repo.all()
   end
 
-  def list_quality_controls_by_source_id(source_id) do
-    QualityControl
-    |> where([qc], qc.source_id == ^source_id)
-    |> preload(:published_version)
+  def list_published_versions_by_source_id(source_id) do
+    QualityControlVersion
+    |> join(:inner, [qcv], qc in assoc(qcv, :quality_control))
+    |> where([qcv, qc], qc.source_id == ^source_id and qcv.status == "published")
+    |> preload([_, qc], quality_control: qc)
     |> Repo.all()
   end
 
@@ -54,6 +56,10 @@ defmodule TdQx.QualityControls do
   def list_quality_control_latest_versions do
     quality_control_latest_versions_query()
     |> Repo.all()
+  end
+
+  def get_quality_control(id) do
+    Repo.get(QualityControl, id)
   end
 
   @doc """
@@ -102,19 +108,20 @@ defmodule TdQx.QualityControls do
       |> then(&Map.put(quality_control, :domains, &1))
 
   defp enrich_step(
-         :resource,
-         %{latest_version: %{resource: resource}} = quality_control
-       ),
-       do:
-         resource
-         |> DataViews.enrich_resource()
-         |> then(fn resource ->
-           Map.update!(
-             quality_control,
-             :latest_version,
-             &Map.update!(&1, :resource, fn _ -> resource end)
-           )
-         end)
+         :control_properties,
+         %{latest_version: %{control_properties: %ControlProperties{} = control_properties}} =
+           quality_control
+       ) do
+    Map.update!(
+      quality_control,
+      :latest_version,
+      fn version ->
+        Map.update!(version, :control_properties, fn _ ->
+          ControlProperties.enrich_resources(control_properties, &DataViews.enrich_resource/1)
+        end)
+      end
+    )
+  end
 
   defp enrich_step(_, quality_control), do: quality_control
 
@@ -150,8 +157,9 @@ defmodule TdQx.QualityControls do
   """
   def update_quality_control(%QualityControl{} = quality_control, attrs) do
     quality_control
-    |> QualityControl.changeset(attrs)
+    |> QualityControl.update_changeset(attrs)
     |> Repo.update()
+    |> TdQx.QualityControlWorkflow.reindex_quality_control()
   end
 
   @doc """
@@ -168,19 +176,6 @@ defmodule TdQx.QualityControls do
   """
   def delete_quality_control(%QualityControl{} = quality_control) do
     Repo.delete(quality_control)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking quality_control changes.
-
-  ## Examples
-
-      iex> change_quality_control(quality_control)
-      %Ecto.Changeset{data: %QualityControl{}}
-
-  """
-  def change_quality_control(%QualityControl{} = quality_control, attrs \\ %{}) do
-    QualityControl.changeset(quality_control, attrs)
   end
 
   @doc """
@@ -214,6 +209,12 @@ defmodule TdQx.QualityControls do
 
   """
   def get_quality_control_version!(id), do: Repo.get!(QualityControlVersion, id)
+
+  def get_quality_control_version(id, preload),
+    do:
+      QualityControlVersion
+      |> preload(^preload)
+      |> Repo.get(id)
 
   @doc """
   Creates a quality_control_version.

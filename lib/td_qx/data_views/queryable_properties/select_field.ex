@@ -30,6 +30,21 @@ defmodule TdQx.DataViews.QueryableProperties.SelectField do
     |> validate_required([:alias, :id])
   end
 
+  def to_json([%__MODULE__{} | _] = select_fields),
+    do: for(select_field <- select_fields, do: to_json(select_field))
+
+  def to_json([]), do: []
+
+  def to_json(%__MODULE__{} = field) do
+    %{
+      id: field.id,
+      alias: field.alias,
+      expression: Expression.to_json(field.expression)
+    }
+  end
+
+  def to_json(_), do: nil
+
   def unfold([%__MODULE__{} | _] = fields) do
     Enum.map(fields, &unfold/1)
   end

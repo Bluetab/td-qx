@@ -1,7 +1,7 @@
 defmodule TdQxWeb.FunctionJSON do
+  alias TdQx.Expressions.Expression
   alias TdQx.Functions.Function
-  alias TdQxWeb.ExpressionJSON
-  alias TdQxWeb.ParamJSON
+  alias TdQx.Functions.Param
 
   @doc """
   Renders a list of functions.
@@ -25,27 +25,8 @@ defmodule TdQxWeb.FunctionJSON do
       class: function.class,
       operator: function.operator,
       description: function.description,
-      params: ParamJSON.embed_many(function),
-      expression: ExpressionJSON.embed_one(function)
-    }
-  end
-end
-
-defmodule TdQxWeb.ParamJSON do
-  alias TdQx.Functions.Function
-  alias TdQx.Functions.Param
-
-  def embed_many(%Function{params: [%Param{} | _] = params}),
-    do: for(param <- params, do: data(param))
-
-  def embed_many(_), do: []
-
-  def data(%Param{} = param) do
-    %{
-      id: param.id,
-      name: param.name,
-      type: param.type,
-      description: param.description
+      params: Param.to_json(function.params),
+      expression: Expression.to_json(function.expression)
     }
   end
 end

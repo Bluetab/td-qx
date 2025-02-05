@@ -19,6 +19,7 @@ config :td_core, TdCore.Search.Cluster,
 config :td_core, TdCore.Search.Cluster,
   indexes: [
     quality_controls: [
+      template_scope: :qx,
       store: TdQx.Search.Store,
       sources: [TdQx.QualityControls.QualityControl],
       bulk_wait_interval: 0,
@@ -26,20 +27,25 @@ config :td_core, TdCore.Search.Cluster,
       settings: %{
         analysis: %{
           analyzer: %{
-            ngram: %{
-              filter: ["lowercase", "asciifolding"],
-              tokenizer: "ngram"
+            default: %{
+              type: "custom",
+              tokenizer: "split_on_non_word",
+              filter: ["lowercase", "asciifolding"]
             }
           },
           normalizer: %{
             sortable: %{type: "custom", char_filter: [], filter: ["lowercase", "asciifolding"]}
           },
           tokenizer: %{
-            ngram: %{
-              type: "ngram",
-              min_gram: 3,
-              max_gram: 3,
-              token_chars: ["letter", "digit"]
+            split_on_non_word: %{
+              type: "pattern",
+              pattern: "\\W+|_"
+            }
+          },
+          filter: %{
+            es_stem: %{
+              type: "stemmer",
+              language: "light_spanish"
             }
           }
         }

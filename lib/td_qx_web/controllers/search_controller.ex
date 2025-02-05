@@ -1,27 +1,21 @@
 defmodule TdQxWeb.SearchController do
   use TdQxWeb, :controller
 
-  alias TdCore.Search
-  alias TdCore.Search.Permissions, as: SearchPermissions
-  alias TdCore.Search.Query
-  alias TdQx.Executions.Actions
-  alias TdQx.Permissions
   alias TdQx.QualityControls
+  alias TdQx.Search
   alias TdQx.Search.Indexer
 
   action_fallback(TdQxWeb.FallbackController)
-
-  @default_page 0
-  @default_size 20
 
   def create(conn, %{} = params) do
     claims = conn.assigns[:current_resource]
 
     with :ok <- Bodyguard.permit(QualityControls, :search, claims) do
-      results = do_search(params, claims)
+      {results, total} = Search.search(params, claims)
 
       conn
-      |> Actions.put_actions(claims)
+      |> put_resp_header("x-total-count", "#{total}")
+      |> put_actions(claims)
       |> render(:show, results: results)
     end
   end
@@ -30,11 +24,7 @@ defmodule TdQxWeb.SearchController do
     claims = conn.assigns[:current_resource]
 
     with :ok <- Bodyguard.permit(QualityControls, :search, claims) do
-      {query, aggs} = build_query(params, claims)
-
-      search = %{query: query, aggs: aggs, size: 0}
-
-      case Search.get_filters(search, :quality_controls) do
+      case Search.filters(params, claims) do
         {:ok, response} -> render(conn, :show, results: response)
         {:error, _error} -> render(conn, :show, results: %{})
       end
@@ -50,36 +40,13 @@ defmodule TdQxWeb.SearchController do
     end
   end
 
-  defp build_query(params, claims) do
-    permissions_filter =
-      SearchPermissions.filter_for_permissions(["view_quality_controls"], claims)
-
-    aggs = Search.ElasticDocumentProtocol.aggregations(%QualityControls.QualityControl{})
-    query = Query.build_query(permissions_filter, params, aggs)
-    {query, aggs}
+  def put_actions(conn, claims) do
+    [:execute, :view]
+    |> Enum.filter(&Bodyguard.permit?(TdQx.Scores, &1, claims, %{}))
+    |> Map.new(fn
+      action ->
+        {action, %{method: "POST"}}
+    end)
+    |> then(&assign(conn, :actions, &1))
   end
-
-  defp do_search(%{"must" => must = %{"executable" => ["true"]}} = params, claims) do
-    params
-    |> Map.put("must", Map.delete(must, "executable"))
-    |> do_search(claims)
-    |> Enum.filter(&Permissions.visible_by_permissions?(&1, claims))
-  end
-
-  defp do_search(%{} = params, claims) do
-    page = Map.get(params, "page", @default_page)
-    size = Map.get(params, "size", @default_size)
-
-    sort = Map.get(params, "sort") || %{}
-
-    {query, _} = build_query(params, claims)
-
-    %{from: page * size, size: size, query: query, sort: sort}
-    |> Search.search(:quality_controls)
-    |> transform_response
-  end
-
-  defp transform_response({:ok, response}), do: transform_response(response)
-  defp transform_response({:error, _} = response), do: response
-  defp transform_response(%{results: results}), do: Enum.map(results, &Map.get(&1, "_source"))
 end

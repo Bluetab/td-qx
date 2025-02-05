@@ -37,6 +37,13 @@ defmodule TdQxWeb.FallbackController do
     |> render(:"403")
   end
 
+  def call(conn, {:error, :unprocessable_entity}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: TdQxWeb.ErrorJSON)
+    |> render(:"422")
+  end
+
   def call(conn, {:error, :invalid_action, action}) do
     conn
     |> put_status(:unprocessable_entity)

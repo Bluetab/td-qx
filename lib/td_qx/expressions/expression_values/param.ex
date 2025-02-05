@@ -17,4 +17,10 @@ defmodule TdQx.Expressions.ExpressionValues.Param do
     |> cast(params, [:id])
     |> validate_required([:id])
   end
+
+  def to_json(%__MODULE__{} = param) do
+    %{id: param.id}
+  end
+
+  def to_json(_), do: nil
 end

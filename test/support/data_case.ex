@@ -28,6 +28,8 @@ defmodule TdQx.DataCase do
       import TdQx.DataCase
 
       import TdQx.Factory
+
+      defp random_integer, do: System.unique_integer([:positive])
     end
   end
 

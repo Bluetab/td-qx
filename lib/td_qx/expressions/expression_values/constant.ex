@@ -21,4 +21,13 @@ defmodule TdQx.Expressions.ExpressionValues.Constant do
     |> validate_required([:type, :value])
     |> Function.validate_type()
   end
+
+  def to_json(%__MODULE__{} = constant) do
+    %{
+      type: constant.type,
+      value: constant.value
+    }
+  end
+
+  def to_json(_), do: nil
 end

@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.1.0] 2025-02-05
+
+### Added
+
+- [TD-6862]
+  - Scores functionality
+  - Control mode specifications
+  - Optimize permissions
+  - Updates all default analyzers to take `asciifolding` into account.
+  - `search_as_you_type` type for identifiers.
+  - Defines scope for native and dynamic fields search.
+
 ## [7.0.0] 2025-01-13
 
 ### Changed

@@ -20,6 +20,17 @@ defmodule TdQx.Expressions.Clause do
     |> cast_embed(:expressions, with: &Expression.changeset/2, required: true)
   end
 
+  def to_json([%__MODULE__{} | _] = clauses),
+    do: for(clause <- clauses, do: to_json(clause))
+
+  def to_json([]), do: []
+
+  def to_json(%__MODULE__{expressions: expressions}) do
+    %{expressions: Expression.to_json(expressions)}
+  end
+
+  def to_json(_), do: nil
+
   def unfold([%__MODULE__{} | _] = clauses) do
     Enum.map(clauses, &unfold/1)
   end

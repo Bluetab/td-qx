@@ -23,4 +23,15 @@ defmodule TdQx.Expressions.ExpressionValues.Field do
     |> validate_required([:id, :type, :name, :parent_id])
     |> Function.validate_type()
   end
+
+  def to_json(%__MODULE__{} = field) do
+    %{
+      id: field.id,
+      type: field.type,
+      name: field.name,
+      parent_id: field.parent_id
+    }
+  end
+
+  def to_json(_), do: nil
 end
