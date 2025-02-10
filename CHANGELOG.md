@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-6927] Added update_main action to update domains
+
 ## [7.1.0] 2025-02-05
 
 ### Added

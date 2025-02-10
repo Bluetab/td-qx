@@ -129,6 +129,8 @@ defmodule TdQx.QualityControlWorkflow do
 
   def valid_action?(_, "delete_score"), do: true
 
+  def valid_action?(_, "update_main"), do: true
+
   def valid_action?(_, _), do: false
 
   def changesets_for_action(
