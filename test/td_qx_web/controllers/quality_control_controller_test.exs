@@ -48,7 +48,15 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
 
-      assert %{"_actions" => ["deprecate", "create_draft", "toggle_active", "delete_score"]} =
+      assert %{
+               "_actions" => [
+                 "deprecate",
+                 "create_draft",
+                 "toggle_active",
+                 "delete_score",
+                 "update_main"
+               ]
+             } =
                json_response(conn, 200)
     end
 
@@ -162,7 +170,9 @@ defmodule TdQxWeb.QualityControlControllerTest do
         )
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
-      assert %{"_actions" => ["restore", "delete_score"]} = json_response(conn, 200)
+
+      assert %{"_actions" => ["restore", "delete_score", "update_main"]} =
+               json_response(conn, 200)
     end
 
     @tag authentication: [role: "admin"]
@@ -187,7 +197,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
 
-      assert %{"_actions" => ["edit", "toggle_active", "delete_score"]} = json_response(conn, 200)
+      assert %{"_actions" => ["edit", "toggle_active", "delete_score", "update_main"]} =
+               json_response(conn, 200)
     end
 
     @tag authentication: [role: "admin"]
@@ -213,7 +224,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
                  "publish",
                  "edit",
                  "toggle_active",
-                 "delete_score"
+                 "delete_score",
+                 "update_main"
                ]
              } =
                json_response(conn, 200)
