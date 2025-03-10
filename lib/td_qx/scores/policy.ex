@@ -22,6 +22,11 @@ defmodule TdQx.Scores.Policy do
       when action in [:index, :create, :execute],
       do: Permissions.authorized?(claims, :execute_quality_controls)
 
+  def authorize(:search, %{role: "user"} = claims, ScoreGroup) do
+    Permissions.authorized?(claims, :execute_quality_controls) ||
+      Permissions.authorized?(claims, :manage_quality_controls)
+  end
+
   def authorize(:index, %{} = claims, %QualityControl{domain_ids: domain_ids}),
     do: Permissions.all_authorized?(claims, :view_quality_controls, domain_ids)
 

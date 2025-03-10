@@ -1,9 +1,10 @@
 defmodule TdQxWeb.ScoreEventJSON do
-  alias TdQx.Scores.ScoreEvent
-
   @doc """
   Renders a single score_event.
   """
+
+  alias TdQx.Scores.ScoreEvent
+
   def show(%{score_event: score_event}) do
     %{data: data(score_event)}
   end

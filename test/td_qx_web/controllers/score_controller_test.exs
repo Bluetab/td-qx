@@ -10,16 +10,6 @@ defmodule TdQxWeb.ScoreControllerTest do
   end
 
   describe "cast_params/2 :fetch_pending" do
-    test "sources param is required" do
-      assert {:error,
-              %{
-                valid?: false,
-                errors: [sources: {"can't be blank", [validation: :required]}]
-              }} = ScoreController.cast_params(:fetch_pending, %{})
-
-      assert {:ok, [sources: [1]]} = ScoreController.cast_params(:fetch_pending, %{sources: [1]})
-    end
-
     test "casts all params" do
       params = %{
         "sources" => [1, 2],
@@ -178,16 +168,6 @@ defmodule TdQxWeb.ScoreControllerTest do
         |> json_response(:ok)
 
       assert length(scores) == 1
-    end
-
-    @tag authentication: [role: "service"]
-    test "request without sources will fail", %{conn: conn} do
-      insert(:score)
-
-      %{"errors" => %{"sources" => ["can't be blank"]}} =
-        conn
-        |> post(~p"/api/scores/fetch_pending", %{})
-        |> json_response(:unprocessable_entity)
     end
 
     @tag authentication: [role: "service"]

@@ -10,15 +10,24 @@ defmodule TdQx.Scores do
   alias TdQx.Scores.Score
   alias TdQx.Scores.ScoreEvent
   alias TdQx.Scores.ScoreGroup
+  alias TdQx.Search.Indexer
 
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
-  defp score_groups_query(opts) do
+  def score_groups_query(opts) do
     opts
     |> Enum.reduce(ScoreGroup, fn
-      {:id, id}, q -> where(q, [eg], eg.id == ^id)
-      {:created_by, user_id}, q -> where(q, [eg], eg.created_by == ^user_id)
-      {:preload, preload}, q -> score_group_preload_query(preload, q)
+      {:id, id}, q ->
+        where(q, [eg], eg.id == ^id)
+
+      {:ids, ids}, q ->
+        where(q, [eg], eg.id in ^ids)
+
+      {:created_by, user_id}, q ->
+        where(q, [eg], eg.created_by == ^user_id)
+
+      {:preload, preload}, q ->
+        score_group_preload_query(preload, q)
     end)
   end
 
@@ -66,9 +75,7 @@ defmodule TdQx.Scores do
   def create_score_group(quality_control_version_ids, params) do
     changeset = ScoreGroup.changeset(%ScoreGroup{}, params)
 
-    multi =
-      Multi.new()
-      |> Multi.insert(:score_group, changeset)
+    multi = Multi.insert(Multi.new(), :score_group, changeset)
 
     quality_control_version_ids
     |> Enum.reduce(multi, fn qcv_id, multi ->
@@ -79,6 +86,7 @@ defmodule TdQx.Scores do
       )
     end)
     |> Repo.transaction()
+    |> on_upsert()
   end
 
   defp multi_insert_score(
@@ -91,6 +99,13 @@ defmodule TdQx.Scores do
     })
   end
 
+  def on_upsert({:ok, %{score_group: %{id: group_id}}} = res) do
+    Indexer.reindex([group_id], :score_groups)
+    res
+  end
+
+  def on_upsert(res), do: res
+
   defp scores_query(opts) do
     base_query = from(s in Score, as: :score)
 
@@ -99,6 +114,9 @@ defmodule TdQx.Scores do
       {:id, id}, q ->
         where(q, [s], s.id == ^id)
 
+      {:group_ids, group_ids}, q ->
+        where(q, [s], s.group_id in ^group_ids)
+
       {:status, status}, q ->
         q
         |> score_with_status_query()
@@ -106,19 +124,32 @@ defmodule TdQx.Scores do
 
       {:sources, source_ids}, q ->
         q
-        |> join(:inner, [score: s], qcv in assoc(s, :quality_control_version), as: :qcv_sources)
-        |> join(:inner, [qcv_sources: qcv], qc in assoc(qcv, :quality_control), as: :qc_source)
-        |> where([qc_source: qc], qc.source_id in ^source_ids)
+        |> ensure_join_qcv()
+        |> ensure_join_qc()
+        |> where([qc: qc], qc.source_id in ^source_ids)
 
       {:quality_control_id, quality_control_id}, q ->
         q
-        |> join(:inner, [score: s], qcv in assoc(s, :quality_control_version), as: :qcv)
+        |> ensure_join_qcv()
         |> where([qcv: qcv], qcv.quality_control_id == ^quality_control_id)
 
       {:preload, preload}, q ->
         score_preload_query(preload, q)
     end)
   end
+
+  # Helper for ensuring a named binding exists, with a cleaner syntax
+  defp ensure_join(query, binding_name, {parent_binding, assoc_name}) do
+    if has_named_binding?(query, binding_name) do
+      query
+    else
+      join(query, :inner, [{^parent_binding, p}], a in assoc(p, ^assoc_name), as: ^binding_name)
+    end
+  end
+
+  # Simple wrappers for common join patterns
+  defp ensure_join_qcv(query), do: ensure_join(query, :qcv, {:score, :quality_control_version})
+  defp ensure_join_qc(query), do: ensure_join(query, :qc, {:qcv, :quality_control})
 
   def list_scores(opts \\ []) do
     opts

@@ -126,6 +126,9 @@ config :td_core, TdCore.Search.Cluster,
     quality_controls: [
       bulk_page_size:
         System.get_env("BULK_PAGE_SIZE_QUALITY_CONTROLS", "5000") |> String.to_integer()
+    ],
+    score_groups: [
+      bulk_page_size: System.get_env("BULK_PAGE_SIZE_SCORE_GROUPS", "5000") |> String.to_integer()
     ]
   ]
 
@@ -141,5 +144,6 @@ config :td_core, TdCore.Search.Cluster,
     "status" => System.get_env("AGG_STATUS_SIZE", "500") |> String.to_integer(),
     "df_type.raw" => System.get_env("AGG_DF_TYPE_RAW_SIZE", "500") |> String.to_integer(),
     "taxonomy" => System.get_env("AGG_TAXONOMY_SIZE", "500") |> String.to_integer(),
-    "active" => System.get_env("AGG_ACTIVE_SIZE", "500") |> String.to_integer()
+    "active" => System.get_env("AGG_ACTIVE_SIZE", "500") |> String.to_integer(),
+    "created_by" => System.get_env("AGG_CREATED_BY_SIZE", "500") |> String.to_integer()
   }

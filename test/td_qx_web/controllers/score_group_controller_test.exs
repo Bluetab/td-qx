@@ -2,6 +2,7 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
   use TdQxWeb.ConnCase
 
   alias TdCluster.TestHelpers.TdDfMock
+  alias TdCore.Search.IndexWorkerMock
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -38,13 +39,13 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
 
       for _ <- 1..3, do: insert(:score_group)
 
-      %{"data" => response} =
+      %{"data" => data} =
         conn
         |> get(~p"/api/score_groups?created_by=me")
         |> json_response(:ok)
 
       response_ids =
-        response
+        data
         |> Enum.map(& &1["id"])
         |> Enum.sort()
 
@@ -170,6 +171,8 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
       conn: conn,
       claims: %{user_id: user_id}
     } do
+      IndexWorkerMock.clear()
+
       quality_controls =
         for _ <- 1..3 do
           qc = insert(:quality_control)
@@ -246,6 +249,8 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
                  %{"status" => "PENDING"}
                ]
              } = response
+
+      assert IndexWorkerMock.calls() == [{:reindex, :score_groups, [id]}]
     end
 
     @tag authentication: [role: "admin"]
@@ -253,6 +258,8 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
       conn: conn,
       claims: %{user_id: user_id}
     } do
+      IndexWorkerMock.clear()
+
       quality_control_version_ids =
         for _ <- 1..3,
             do:
@@ -297,6 +304,8 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
                  %{"status" => "PENDING"}
                ]
              } = response
+
+      assert IndexWorkerMock.calls() == [{:reindex, :score_groups, [id]}]
     end
   end
 end
