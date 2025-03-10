@@ -17,7 +17,8 @@ defmodule TdQx.QualityControls.Actions do
     "create_draft",
     "toggle_active",
     "delete_score",
-    "update_main"
+    "update_main",
+    "execute"
   ]
 
   def put_actions(conn, claims, quality_control) do

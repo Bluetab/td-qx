@@ -7,6 +7,7 @@ defmodule TdQxWeb.ScoreController do
   alias TdQx.QualityControlTransformer
   alias TdQx.Scores
   alias TdQx.Scores.Score
+  alias TdQx.Search
 
   action_fallback(TdQxWeb.FallbackController)
 
@@ -43,12 +44,18 @@ defmodule TdQxWeb.ScoreController do
   def fetch_pending(conn, params) do
     claims = conn.assigns[:current_resource]
 
+    filter_params =
+      Map.get(params, "filter_params", %{})
+
     params =
       params
+      |> Map.delete("filter_params")
       |> Map.put("status", "PENDING")
       |> Map.put("preload", quality_control_version: :quality_control)
 
     with :ok <- Bodyguard.permit(Scores, :fetch_pending, claims),
+         results <- maybe_do_search(filter_params, claims),
+         params <- maybe_add_ids_to_params(params, results),
          {:ok, opts} <- cast_params(:fetch_pending, params) do
       scores = Scores.list_scores(opts)
 
@@ -123,17 +130,31 @@ defmodule TdQxWeb.ScoreController do
     end
   end
 
+  defp maybe_do_search(%{} = filter_params, claims) when map_size(filter_params) !== 0 do
+    %{results: results} = Search.search_score_groups(filter_params, claims)
+    results
+  end
+
+  defp maybe_do_search(_filter_params, _claims), do: []
+
+  defp maybe_add_ids_to_params(params, []), do: params
+
+  defp maybe_add_ids_to_params(params, results) do
+    group_ids = Enum.map(results, &Map.get(&1, "id"))
+    Map.put(params, "group_ids", group_ids)
+  end
+
   def cast_params(:fetch_pending, %{} = params) do
     types = %{
       sources: {:array, :integer},
       status: :string,
-      preload: :any
+      preload: :any,
+      group_ids: {:array, :integer}
     }
 
     {%{}, types}
     |> Changeset.cast(params, Map.keys(types))
     |> Changeset.update_change(:status, &String.upcase/1)
-    |> Changeset.validate_required(:sources)
     |> case do
       %{valid?: true} = changeset ->
         {:ok,

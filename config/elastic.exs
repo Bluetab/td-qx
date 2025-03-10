@@ -13,6 +13,7 @@ config :td_core, TdCore.Search.Cluster,
   # The library used for JSON encoding/decoding.
   json_library: Jason,
   aliases: %{
+    score_groups: "score_groups",
     quality_controls: "quality_controls"
   }
 
@@ -22,6 +23,39 @@ config :td_core, TdCore.Search.Cluster,
       template_scope: :qx,
       store: TdQx.Search.Store,
       sources: [TdQx.QualityControls.QualityControl],
+      bulk_wait_interval: 0,
+      bulk_action: "index",
+      settings: %{
+        analysis: %{
+          analyzer: %{
+            default: %{
+              type: "custom",
+              tokenizer: "split_on_non_word",
+              filter: ["lowercase", "asciifolding"]
+            }
+          },
+          normalizer: %{
+            sortable: %{type: "custom", char_filter: [], filter: ["lowercase", "asciifolding"]}
+          },
+          tokenizer: %{
+            split_on_non_word: %{
+              type: "pattern",
+              pattern: "\\W+|_"
+            }
+          },
+          filter: %{
+            es_stem: %{
+              type: "stemmer",
+              language: "light_spanish"
+            }
+          }
+        }
+      }
+    ],
+    score_groups: [
+      template_scope: :qxe,
+      store: TdQx.Search.Store,
+      sources: [TdQx.Scores.ScoreGroup],
       bulk_wait_interval: 0,
       bulk_action: "index",
       settings: %{

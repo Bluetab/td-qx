@@ -9,6 +9,8 @@ defmodule TdQx.Scores.ScoreGroup do
   alias TdDfLib.Validation
   alias TdQx.Scores.Score
 
+  @derive Jason.Encoder
+
   schema "score_groups" do
     field :dynamic_content, :map
     field :df_type, :string
@@ -18,7 +20,7 @@ defmodule TdQx.Scores.ScoreGroup do
 
     has_many :scores, Score, foreign_key: :group_id
 
-    timestamps(type: :utc_datetime_usec)
+    timestamps type: :utc_datetime_usec
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params) do

@@ -34,16 +34,13 @@ defmodule TdQxWeb.ScoreGroupController do
     end
   end
 
-  def create(conn, %{
-        "score_group" => score_group_params,
-        "search" => search_params
-      }) do
+  def create(conn, %{"score_group" => score_group_params, "search" => search_params}) do
     %{user_id: user_id} = claims = conn.assigns[:current_resource]
 
     score_group_params = Map.put(score_group_params, "created_by", user_id)
 
-    with :ok <- Bodyguard.permit(Scores, :create, claims),
-         {quality_controls, _} <- Search.search(search_params, claims),
+    with :ok <- Bodyguard.permit(Scores, :create, claims, ScoreGroup),
+         %{results: quality_controls} <- Search.search(search_params, claims),
          quality_control_ids <- Enum.map(quality_controls, & &1["version_id"]),
          {:ok, %{score_group: %{id: id}}} <-
            Scores.create_score_group(quality_control_ids, score_group_params) do
@@ -64,7 +61,7 @@ defmodule TdQxWeb.ScoreGroupController do
 
     score_group_params = Map.put(score_group_params, "created_by", user_id)
 
-    with :ok <- Bodyguard.permit(Scores, :create, claims),
+    with :ok <- Bodyguard.permit(Scores, :create, claims, ScoreGroup),
          {:ok, %{score_group: %{id: id}}} <-
            Scores.create_score_group(quality_control_version_ids, score_group_params) do
       score_group = Scores.get_score_group(id)
