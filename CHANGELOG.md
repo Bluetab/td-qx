@@ -1,5 +1,16 @@
 # Changelog
 
+## [7.3.0] 2025-03-18
+
+### Added
+
+- [TD-6927]
+  - Update_main action to update domains
+  - Elastic search scroll functionality
+  - Score Groups pagination funcionality
+  - Get score_groups by dynamic_content
+  - Score groups to elastic search
+
 ## [7.1.0] 2025-02-05
 
 ### Added

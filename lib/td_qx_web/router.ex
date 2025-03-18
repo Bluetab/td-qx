@@ -25,7 +25,7 @@ defmodule TdQxWeb.Router do
     scope "/quality_controls" do
       post "/search", SearchController, :create
       post "/filters", SearchController, :filters
-      get "/reindex", SearchController, :reindex
+      get "/reindex", SearchController, :quality_controls_reindex
       get "/queries/:source_id", QualityControlController, :queries_by_source_id
     end
 
@@ -38,6 +38,12 @@ defmodule TdQxWeb.Router do
       patch "/status", QualityControlController, :update_status
       patch "/main", QualityControlController, :update_main
       get "/scores", ScoreController, :index_by_quality_control
+    end
+
+    scope "/score_groups" do
+      post "/filters", SearchController, :score_group_filters
+      post "/search", SearchController, :create_score_groups
+      get "/reindex", SearchController, :score_groups_reindex
     end
 
     resources "/score_groups", ScoreGroupController, only: [:index, :create, :show]

@@ -105,6 +105,9 @@ defmodule TdQx.QualityControlWorkflow do
   def valid_action?(%{latest_version: %{status: "published"}}, "deprecate"),
     do: true
 
+  def valid_action?(%{latest_version: %{status: "published"}}, "execute"),
+    do: true
+
   def valid_action?(%{latest_version: %{status: "deprecated"}}, "restore"),
     do: true
 
@@ -114,10 +117,16 @@ defmodule TdQx.QualityControlWorkflow do
   def valid_action?(%{latest_version: %{status: "pending_approval"}}, "reject"),
     do: true
 
+  def valid_action?(%{latest_version: %{status: "pending_approval"}}, "execute"),
+    do: true
+
   def valid_action?(%{latest_version: %{status: "draft"} = latest_version}, "send_to_approval"),
     do: QualityControlVersion.valid_publish_version(latest_version)
 
   def valid_action?(%{latest_version: %{status: "draft"}}, "edit"),
+    do: true
+
+  def valid_action?(%{latest_version: %{status: "draft"}}, "execute"),
     do: true
 
   def valid_action?(%{latest_version: %{status: "published"}}, "create_draft"),
@@ -128,6 +137,8 @@ defmodule TdQx.QualityControlWorkflow do
       do: true
 
   def valid_action?(_, "delete_score"), do: true
+
+  def valid_action?(_, "update_main"), do: true
 
   def valid_action?(_, _), do: false
 

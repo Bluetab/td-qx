@@ -7,11 +7,11 @@ defmodule TdQx.Search.Indexer do
 
   @index :quality_controls
 
-  def reindex(ids) do
-    IndexWorker.reindex(@index, ids)
+  def reindex(ids, index \\ @index) do
+    IndexWorker.reindex(index, ids)
   end
 
-  def delete(ids) do
-    IndexWorker.delete(@index, ids)
+  def delete(ids, index \\ @index) do
+    IndexWorker.delete(index, ids)
   end
 end

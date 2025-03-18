@@ -9,8 +9,13 @@ defmodule TdQx.QualityControls.Policy do
   # Admin accounts can do anything with data sets
   def authorize(_action, %{role: "admin"}, _params), do: true
 
+  def authorize(:reindex, %{role: "service"}, _params), do: true
+
   def authorize(:search, %{} = claims, _params),
     do: Permissions.authorized?(claims, :view_quality_controls)
+
+  def authorize(:execute, %{} = claims, _params),
+    do: Permissions.authorized?(claims, :execute_quality_controls)
 
   def authorize(:create, %{} = claims, {domain_ids, "published"}),
     do: Permissions.all_authorized?(claims, :manage_quality_controls, domain_ids)
@@ -56,6 +61,12 @@ defmodule TdQx.QualityControls.Policy do
              "delete_score"
            ],
       do: Permissions.all_authorized?(claims, :manage_quality_controls, domain_ids)
+
+  def authorize(action, %{} = claims, %QualityControl{domain_ids: domain_ids})
+      when action in [
+             "execute"
+           ],
+      do: Permissions.all_authorized?(claims, :execute_quality_controls, domain_ids)
 
   # No other users can do nothing
   def authorize(_action, _claims, _params), do: false
