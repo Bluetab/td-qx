@@ -14,15 +14,15 @@ config :td_core, TdCore.Search.Cluster,
   json_library: Jason,
   aliases: %{
     score_groups: "score_groups",
-    quality_controls: "quality_controls"
+    quality_control_versions: "quality_control_versions"
   }
 
 config :td_core, TdCore.Search.Cluster,
   indexes: [
-    quality_controls: [
+    quality_control_versions: [
       template_scope: :qx,
       store: TdQx.Search.Store,
-      sources: [TdQx.QualityControls.QualityControl],
+      sources: [TdQx.QualityControls.QualityControlVersion],
       bulk_wait_interval: 0,
       bulk_action: "index",
       settings: %{

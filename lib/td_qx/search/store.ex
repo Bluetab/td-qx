@@ -10,51 +10,20 @@ defmodule TdQx.Search.Store do
   alias TdCluster.Cluster.TdDd.Tasks
   alias TdCluster.Cluster.TdDf
   alias TdQx.QualityControls
-  alias TdQx.QualityControls.QualityControl
+  alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Repo
   alias TdQx.Scores
   alias TdQx.Scores.ScoreGroup
 
   @impl true
-  def stream(QualityControl) do
-    {:ok, templates} = TdDf.list_templates_by_scope("quality_control")
-
-    templates_map = Enum.into(templates, %{}, fn %{name: name} = template -> {name, template} end)
-
-    count = Repo.aggregate(QualityControl, :count, :id)
-    Tasks.log_start_stream(count)
-
-    QualityControls.quality_control_latest_versions_query()
-    |> Repo.stream()
-    |> Stream.map(fn %{latest_version: %{df_type: df_type}} = quality_control ->
-      Tasks.log_progress(1)
-      Map.put(quality_control, :template, Map.get(templates_map, df_type))
-    end)
-  end
+  def stream(QualityControlVersion), do: stream(QualityControlVersion, [])
 
   @impl true
-  def stream(ScoreGroup) do
-    {:ok, templates} = TdDf.list_templates_by_scope("qxe")
-
-    templates_map = Enum.into(templates, %{}, fn %{name: name} = template -> {name, template} end)
-
-    count = Repo.aggregate(ScoreGroup, :count, :id)
-
-    Tasks.log_start_stream(count)
-
-    []
-    |> Scores.score_groups_query()
-    |> Repo.stream()
-    |> Stream.map(fn %{df_type: df_type} = score_group ->
-      Tasks.log_progress(1)
-      Map.put(score_group, :template, Map.get(templates_map, df_type))
-    end)
-  end
+  def stream(ScoreGroup), do: stream(ScoreGroup, [])
 
   @impl true
   def stream(schema) do
-    schema
-    |> Repo.stream()
+    Repo.stream(schema)
   end
 
   @impl true
@@ -63,16 +32,30 @@ defmodule TdQx.Search.Store do
     result
   end
 
+  def stream(QualityControlVersion, params) when is_list(params) do
+    {:ok, templates} = TdDf.list_templates_by_scope("quality_control")
+    templates_map = Enum.into(templates, %{}, fn %{name: name} = template -> {name, template} end)
+    count = get_count(QualityControlVersion, params)
+    Tasks.log_start_stream(count)
+
+    params
+    |> QualityControls.quality_control_versions_query()
+    |> Repo.stream()
+    |> Stream.map(fn %{df_type: df_type} = quality_control_version ->
+      Tasks.log_progress(1)
+      Map.put(quality_control_version, :template, Map.get(templates_map, df_type))
+    end)
+  end
+
   def stream(ScoreGroup, ids) do
     {:ok, templates} = TdDf.list_templates_by_scope("qxe")
-
     templates_map = Enum.into(templates, %{}, fn %{name: name} = template -> {name, template} end)
 
-    count = Enum.count(ids)
+    count = get_count(ScoreGroup, ids)
 
     Tasks.log_start_stream(count)
 
-    [ids: ids]
+    ids
     |> Scores.score_groups_query()
     |> Repo.stream()
     |> Stream.map(fn %{df_type: df_type} = score_group ->
@@ -81,27 +64,30 @@ defmodule TdQx.Search.Store do
     end)
   end
 
-  def stream(QualityControl, ids) do
-    {:ok, templates} = TdDf.list_templates_by_scope("quality_control")
-
-    templates_map = Enum.into(templates, %{}, fn %{name: name} = template -> {name, template} end)
-
-    count = Repo.aggregate(QualityControl, :count, :id)
-    Tasks.log_start_stream(count)
-
-    QualityControls.quality_control_latest_versions_query()
-    |> where([qc], qc.id in ^ids)
-    |> Repo.stream()
-    |> Stream.map(fn %{latest_version: %{df_type: df_type}} = quality_control ->
-      Tasks.log_progress(1)
-      Map.put(quality_control, :template, Map.get(templates_map, df_type))
-    end)
-  end
-
   def stream(schema, ids) do
     from(item in schema)
     |> where([item], item.id in ^ids)
     |> select([item], item)
     |> Repo.stream()
+  end
+
+  def get_count(QualityControlVersion, []) do
+    Repo.aggregate(QualityControlVersion, :count, :id)
+  end
+
+  def get_count(ScoreGroup, []) do
+    Repo.aggregate(ScoreGroup, :count, :id)
+  end
+
+  def get_count(QualityControlVersion, params) do
+    params
+    |> QualityControls.quality_control_versions_filters()
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def get_count(ScoreGroup, ids) do
+    ids
+    |> Scores.score_groups_query()
+    |> Repo.aggregate(:count, :id)
   end
 end

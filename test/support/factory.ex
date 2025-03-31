@@ -535,12 +535,22 @@ defmodule TdQx.Factory do
   def score_content_factory(%{ratio: %{} = ratio}),
     do: %ScoreContent{ratio: ratio}
 
-  def score_content_factory(_), do: %ScoreContent{ratio: build(:sc_ratio)}
+  def score_content_factory(%{error_count: %{} = error_count}),
+    do: %ScoreContent{error_count: error_count}
 
-  def sc_ratio_factory(attrs) do
+  def score_content_factory(_), do: %ScoreContent{ratio: build(:score_content_ratio_factory)}
+
+  def score_content_ratio_factory(attrs) do
     %ScoreContents.Ratio{
       total_count: 10,
       validation_count: 1
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def score_content_error_count_factory(attrs) do
+    %ScoreContents.ErrorCount{
+      error_count: 100
     }
     |> merge_attributes(attrs)
   end

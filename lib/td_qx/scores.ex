@@ -15,8 +15,7 @@ defmodule TdQx.Scores do
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
   def score_groups_query(opts) do
-    opts
-    |> Enum.reduce(ScoreGroup, fn
+    Enum.reduce(opts, ScoreGroup, fn
       {:id, id}, q ->
         where(q, [eg], eg.id == ^id)
 
@@ -28,6 +27,9 @@ defmodule TdQx.Scores do
 
       {:preload, preload}, q ->
         score_group_preload_query(preload, q)
+
+      _other, q ->
+        q
     end)
   end
 
@@ -99,12 +101,29 @@ defmodule TdQx.Scores do
     })
   end
 
-  def on_upsert({:ok, %{score_group: %{id: group_id}}} = res) do
-    Indexer.reindex([group_id], :score_groups)
+  defp on_upsert({:ok, %{score_group: %{id: group_id}} = multi_results} = res) do
+    version_ids =
+      multi_results
+      |> Map.delete(:score_group)
+      |> Enum.map(fn {_score_key, %Score{quality_control_version_id: quality_control_version_id}} ->
+        quality_control_version_id
+      end)
+      |> Enum.uniq()
+
+    Indexer.reindex(ids: version_ids)
+    Indexer.reindex([id: group_id], :score_groups)
     res
   end
 
-  def on_upsert(res), do: res
+  defp on_upsert(res), do: res
+
+  def latest_score_subquery(opts \\ []) do
+    opts
+    |> scores_query()
+    |> where([_s, le], le.type in ["FAILED", "SUCCEEDED"])
+    |> order_by(desc: :execution_timestamp)
+    |> limit(1)
+  end
 
   defp scores_query(opts) do
     base_query = from(s in Score, as: :score)
@@ -135,6 +154,9 @@ defmodule TdQx.Scores do
 
       {:preload, preload}, q ->
         score_preload_query(preload, q)
+
+      {:parent_quality_control_version, parent_alias}, q ->
+        where(q, [s], s.quality_control_version_id == parent_as(^parent_alias).id)
     end)
   end
 
@@ -229,16 +251,21 @@ defmodule TdQx.Scores do
     |> Repo.update()
     |> case do
       {:ok, score} ->
-        create_score_event(%{
-          score_id: score.id,
-          type: "SUCCEEDED"
-        })
+        create_score_event(
+          %{
+            score_id: score.id,
+            type: "SUCCEEDED",
+            message: Map.get(params, "message")
+          },
+          reindex: false
+        )
 
         {:ok, score}
 
       error ->
         error
     end
+    |> tap(&on_upserted_score/1)
   end
 
   def updated_failed_score(score, params) do
@@ -247,28 +274,34 @@ defmodule TdQx.Scores do
     |> Repo.update()
     |> case do
       {:ok, score} ->
-        create_score_event(%{
-          score_id: score.id,
-          type: "FAILED"
-        })
+        create_score_event(
+          %{
+            score_id: score.id,
+            type: "FAILED",
+            message: Map.get(params, "message")
+          },
+          reindex: false
+        )
 
         {:ok, score}
 
       error ->
         error
     end
+    |> tap(&on_upserted_score/1)
   end
 
   def delete_score(%Score{} = score) do
-    Repo.delete(score)
+    score
+    |> Repo.delete()
+    |> tap(&on_upserted_score/1)
   end
 
   def insert_event_for_scores(scores, event_params) do
     utc_now = DateTime.utc_now()
 
     events =
-      scores
-      |> Enum.map(fn %{id: id} ->
+      Enum.map(scores, fn %{id: id} ->
         Map.merge(
           event_params,
           %{
@@ -279,12 +312,52 @@ defmodule TdQx.Scores do
         )
       end)
 
-    Repo.insert_all(ScoreEvent, events, returning: true)
+    ScoreEvent
+    |> Repo.insert_all(events, returning: true)
+    |> tap(&on_events_insert/1)
   end
 
-  def create_score_event(attrs \\ %{}) do
+  def create_score_event(attrs \\ %{}, opts \\ []) do
+    reindex = Keyword.get(opts, :reindex, true)
+
     %ScoreEvent{}
     |> ScoreEvent.changeset(attrs)
     |> Repo.insert()
+    |> tap(&on_event_insert(&1, reindex))
   end
+
+  defp on_events_insert({_n, events}) do
+    version_ids =
+      events
+      |> Enum.map(&Repo.preload(&1, :score))
+      |> Enum.map(fn %ScoreEvent{
+                       score: %Score{quality_control_version_id: quality_control_version_id}
+                     } ->
+        quality_control_version_id
+      end)
+      |> Enum.uniq()
+
+    Indexer.reindex(ids: version_ids)
+  end
+
+  defp on_event_insert({:ok, %ScoreEvent{score: %Score{} = score}}, true) do
+    Indexer.reindex(ids: score.quality_control_version_id)
+  end
+
+  defp on_event_insert({:ok, %ScoreEvent{} = score_event}, true) do
+    score =
+      score_event
+      |> Repo.preload(:score)
+      |> Map.get(:score)
+
+    Indexer.reindex(ids: score.quality_control_version_id)
+  end
+
+  defp on_event_insert(_error, _reindex), do: :noop
+
+  defp on_upserted_score({:ok, %Score{quality_control_version_id: quality_control_version_id}}) do
+    Indexer.reindex(ids: quality_control_version_id)
+  end
+
+  defp on_upserted_score(_error), do: :noop
 end
