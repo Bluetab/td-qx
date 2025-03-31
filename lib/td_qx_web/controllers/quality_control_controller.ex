@@ -10,11 +10,6 @@ defmodule TdQxWeb.QualityControlController do
 
   action_fallback TdQxWeb.FallbackController
 
-  def index_versions(conn, %{"quality_control_id" => quality_control_id}) do
-    quality_controls = QualityControls.list_quality_control_versions(quality_control_id)
-    render(conn, :index, quality_controls: quality_controls)
-  end
-
   def show(conn, %{"id" => id}) do
     claims = conn.assigns[:current_resource]
 

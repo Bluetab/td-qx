@@ -100,7 +100,9 @@ defmodule TdQx.QualityControlWorkflowTest do
                 }
               }} = QualityControlWorkflow.create_quality_control(params)
 
-      assert IndexWorkerMock.calls() == [{:reindex, :quality_controls, [id]}]
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [{:quality_control_ids, [id]}]}
+             ]
     end
   end
 

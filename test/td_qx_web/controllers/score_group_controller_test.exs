@@ -167,17 +167,16 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
 
   describe "create - POST /api/score_groups" do
     @tag authentication: [role: "admin"]
-    test "admin can create score group passing quality_controls search", %{
+    test "admin can create score group passing quality control versions search", %{
       conn: conn,
       claims: %{user_id: user_id}
     } do
       IndexWorkerMock.clear()
 
-      quality_controls =
+      quality_control_versions =
         for _ <- 1..3 do
           qc = insert(:quality_control)
-          qcv = insert(:quality_control_version, status: "published", quality_control: qc)
-          %{qc | latest_version: qcv}
+          insert(:quality_control_version, status: "published", quality_control: qc)
         end
 
       template_name = "type"
@@ -195,7 +194,7 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
       )
 
       ElasticsearchMock
-      |> Mox.expect(:request, fn _, :post, "/quality_controls/_search", params, _ ->
+      |> Mox.expect(:request, fn _, :post, "/quality_control_versions/_search", params, _ ->
         assert %{
                  query: %{
                    bool: %{
@@ -215,7 +214,7 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
                  }
                } = params
 
-        SearchHelpers.hits_response(quality_controls)
+        SearchHelpers.hits_response(quality_control_versions)
       end)
 
       creation_params = %{
@@ -250,7 +249,11 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
                ]
              } = response
 
-      assert IndexWorkerMock.calls() == [{:reindex, :score_groups, [id]}]
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions,
+                [ids: Enum.map(quality_control_versions, & &1.id)]},
+               {:reindex, :score_groups, [id: id]}
+             ]
     end
 
     @tag authentication: [role: "admin"]
@@ -305,7 +308,10 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
                ]
              } = response
 
-      assert IndexWorkerMock.calls() == [{:reindex, :score_groups, [id]}]
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [ids: quality_control_version_ids]},
+               {:reindex, :score_groups, [id: id]}
+             ]
     end
   end
 end

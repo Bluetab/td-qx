@@ -5,7 +5,7 @@ defmodule TdQx.Search.Indexer do
 
   alias TdCore.Search.IndexWorker
 
-  @index :quality_controls
+  @index :quality_control_versions
 
   def reindex(ids, index \\ @index) do
     IndexWorker.reindex(index, ids)

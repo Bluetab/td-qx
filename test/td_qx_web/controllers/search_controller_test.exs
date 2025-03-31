@@ -8,15 +8,10 @@ defmodule TdQxWeb.SearchControllerTest do
     quality_control = insert(:quality_control)
     qcv = insert(:quality_control_version, quality_control: quality_control)
 
-    response =
-      quality_control
-      |> Map.put(:latest_version, qcv)
-      |> Map.put(:template, %{})
-
     user = CacheHelpers.insert_user()
     score_group = insert(:score_group, created_by: user.id)
 
-    [response: response, score_group: score_group]
+    [response: qcv, score_group: score_group]
   end
 
   setup {Mox, :verify_on_exit!}
@@ -31,7 +26,7 @@ defmodule TdQxWeb.SearchControllerTest do
       )
 
       ElasticsearchMock
-      |> Mox.expect(:request, fn _, :post, "/quality_controls/_search", _, _ ->
+      |> Mox.expect(:request, fn _, :post, "/quality_control_versions/_search", _, _ ->
         SearchHelpers.hits_response([response])
       end)
 
@@ -49,8 +44,11 @@ defmodule TdQxWeb.SearchControllerTest do
         {:ok, []}
       )
 
-      ElasticsearchMock
-      |> Mox.expect(:request, fn _, :post, "/quality_controls/_search", %{query: query}, _ ->
+      Mox.expect(ElasticsearchMock, :request, fn _,
+                                                 :post,
+                                                 "/quality_control_versions/_search",
+                                                 %{query: query},
+                                                 _ ->
         assert %{bool: %{must: %{match_all: %{}}}} == query
 
         SearchHelpers.hits_response([response])
@@ -73,7 +71,7 @@ defmodule TdQxWeb.SearchControllerTest do
       ElasticsearchMock
       |> Mox.expect(:request, fn _,
                                  :post,
-                                 "/quality_controls/_search",
+                                 "/quality_control_versions/_search",
                                  _,
                                  [params: %{"scroll" => "1m"}] ->
         SearchHelpers.scroll_response([response], 1)
@@ -138,8 +136,11 @@ defmodule TdQxWeb.SearchControllerTest do
         {:ok, []}
       )
 
-      ElasticsearchMock
-      |> Mox.expect(:request, fn _, :post, "/quality_controls/_search", %{query: query}, _ ->
+      Mox.expect(ElasticsearchMock, :request, fn _,
+                                                 :post,
+                                                 "/quality_control_versions/_search",
+                                                 %{query: query},
+                                                 _ ->
         assert query == %{bool: %{must: %{term: %{"domain_ids" => domain_id}}}}
         SearchHelpers.hits_response([response])
       end)
@@ -166,7 +167,11 @@ defmodule TdQxWeb.SearchControllerTest do
       )
 
       ElasticsearchMock
-      |> Mox.expect(:request, fn _, :post, "/quality_controls/_search", %{query: query}, _ ->
+      |> Mox.expect(:request, fn _,
+                                 :post,
+                                 "/quality_control_versions/_search",
+                                 %{query: query},
+                                 _ ->
         assert query == %{bool: %{must: %{term: %{"domain_ids" => domain_id}}}}
         SearchHelpers.hits_response([response])
       end)
@@ -195,7 +200,11 @@ defmodule TdQxWeb.SearchControllerTest do
       )
 
       ElasticsearchMock
-      |> Mox.expect(:request, fn _, :post, "/quality_controls/_search", %{query: query}, _ ->
+      |> Mox.expect(:request, fn _,
+                                 :post,
+                                 "/quality_control_versions/_search",
+                                 %{query: query},
+                                 _ ->
         assert query == %{bool: %{must: %{term: %{"domain_ids" => domain_id}}}}
         SearchHelpers.hits_response([response])
       end)
@@ -220,9 +229,8 @@ defmodule TdQxWeb.SearchControllerTest do
         {:ok, []}
       )
 
-      ElasticsearchMock
-      |> Mox.expect(:request, fn
-        _, :post, "/quality_controls/_search", %{query: query, size: 0}, _ ->
+      Mox.expect(ElasticsearchMock, :request, fn
+        _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
           assert query == %{bool: %{must: %{term: %{"name.raw" => "foo"}}}}
 
           SearchHelpers.aggs_response(response)
@@ -249,9 +257,8 @@ defmodule TdQxWeb.SearchControllerTest do
         {:ok, []}
       )
 
-      ElasticsearchMock
-      |> Mox.expect(:request, fn
-        _, :post, "/quality_controls/_search", %{query: query, size: 0}, _ ->
+      Mox.expect(ElasticsearchMock, :request, fn
+        _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
           assert %{bool: %{must: %{term: %{"domain_ids" => ^domain_id}}}} = query
 
           SearchHelpers.aggs_response()
@@ -281,9 +288,8 @@ defmodule TdQxWeb.SearchControllerTest do
         {:ok, []}
       )
 
-      ElasticsearchMock
-      |> Mox.expect(:request, fn
-        _, :post, "/quality_controls/_search", %{query: query, size: 0}, _ ->
+      Mox.expect(ElasticsearchMock, :request, fn
+        _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
           assert %{bool: %{must: %{terms: %{"domain_ids" => domain_ids}}}} = query
           assert Enum.sort(domain_ids) == Enum.sort([id1, id2])
 
@@ -318,7 +324,7 @@ defmodule TdQxWeb.SearchControllerTest do
 
       ElasticsearchMock
       |> Mox.expect(:request, fn
-        _, :post, "/quality_controls/_search", %{query: query, size: 0}, _ ->
+        _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
           assert %{
                    bool: %{
                      must: [
@@ -362,19 +368,19 @@ defmodule TdQxWeb.SearchControllerTest do
 
     for role <- ["admin", "service"] do
       @tag authentication: [role: role]
-      test "#{role} role can reindex quality_controls", %{conn: conn} do
+      test "#{role} role can reindex quality_control_versions", %{conn: conn} do
         IndexWorkerMock.clear()
 
         assert conn
                |> get(~p"/api/quality_controls/reindex")
                |> response(:accepted)
 
-        assert IndexWorkerMock.calls() == [{:reindex, :quality_controls, :all}]
+        assert IndexWorkerMock.calls() == [{:reindex, :quality_control_versions, :all}]
       end
     end
 
     @tag authentication: [role: "non_admin"]
-    test "user without admin privileges cannot reindex quality_controls", %{conn: conn} do
+    test "user without admin privileges cannot reindex quality_control_versions", %{conn: conn} do
       IndexWorkerMock.clear()
 
       assert conn

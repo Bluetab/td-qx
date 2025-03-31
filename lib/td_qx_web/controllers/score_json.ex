@@ -4,7 +4,7 @@ defmodule TdQxWeb.ScoreJSON do
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Scores.ScoreContent
   alias TdQx.Scores.ScoreEvent
-  alias TdQxWeb.QualityControlJSON
+  alias TdQxWeb.QualityControlVersionJSON
   alias TdQxWeb.ScoreEventJSON
 
   @doc """
@@ -62,7 +62,7 @@ defmodule TdQxWeb.ScoreJSON do
   defp with_quality_control_version(json, %{
          quality_control_version: %QualityControlVersion{} = qcv
        }) do
-    Map.put(json, :quality_control, QualityControlJSON.render_one(qcv))
+    Map.put(json, :quality_control, QualityControlVersionJSON.render_one(qcv))
   end
 
   defp with_quality_control_version(json, _), do: json
