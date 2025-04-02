@@ -41,9 +41,9 @@ defmodule TdQxWeb.ScoreGroupController do
 
     with :ok <- Bodyguard.permit(Scores, :create, claims, ScoreGroup),
          %{results: quality_controls} <- Search.search(search_params, claims),
-         quality_control_ids <- Enum.map(quality_controls, & &1["version_id"]),
+         version_ids <- Enum.map(quality_controls, & &1["id"]),
          {:ok, %{score_group: %{id: id}}} <-
-           Scores.create_score_group(quality_control_ids, score_group_params) do
+           Scores.create_score_group(version_ids, score_group_params) do
       score_group = Scores.get_score_group(id)
 
       conn

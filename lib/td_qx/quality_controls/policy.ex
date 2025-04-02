@@ -5,6 +5,7 @@ defmodule TdQx.QualityControls.Policy do
 
   alias TdCore.Auth.Permissions
   alias TdQx.QualityControls.QualityControl
+  alias TdQx.QualityControls.QualityControlVersion
 
   # Admin accounts can do anything with data sets
   def authorize(_action, %{role: "admin"}, _params), do: true
@@ -67,6 +68,12 @@ defmodule TdQx.QualityControls.Policy do
              "execute"
            ],
       do: Permissions.all_authorized?(claims, :execute_quality_controls, domain_ids)
+
+  def authorize(:delete, %{} = claims, %QualityControlVersion{
+        status: "draft",
+        quality_control: %QualityControl{domain_ids: domain_ids}
+      }),
+      do: Permissions.all_authorized?(claims, :manage_quality_controls, domain_ids)
 
   # No other users can do nothing
   def authorize(_action, _claims, _params), do: false

@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-7094]
+  - Access and delete quality control version
+  - Indexing quality control versions with latest score
+
 ## [7.3.0] 2025-03-18
 
 ### Added

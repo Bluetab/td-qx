@@ -55,8 +55,11 @@ defmodule TdQx.QualityControls.QualityControlVersion do
     embeds_one :control_properties, ControlProperties, on_replace: :delete
 
     field :queries, {:array, :map}, virtual: true
+    field :latest, :boolean, virtual: true, default: false
+    field :latest_score, :map, virtual: true
+    field :final_score, :map, virtual: true
 
-    timestamps(type: :utc_datetime_usec)
+    timestamps type: :utc_datetime_usec
   end
 
   def valid_actions, do: @valid_actions

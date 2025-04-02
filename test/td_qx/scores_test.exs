@@ -4,6 +4,7 @@ defmodule TdQx.ScoresTest do
   import TdQx.TestOperators
 
   alias TdCluster.TestHelpers.TdDfMock
+  alias TdCore.Search.IndexWorkerMock
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Repo
   alias TdQx.Scores
@@ -114,6 +115,12 @@ defmodule TdQx.ScoresTest do
   end
 
   describe "create_score_group/2" do
+    setup do
+      IndexWorkerMock.clear()
+
+      :ok
+    end
+
     test "creates a score_group and it's scores" do
       template_name = "type"
       created_by = 10
@@ -151,6 +158,11 @@ defmodule TdQx.ScoresTest do
 
       assert length(scores) == 5
       assert Enum.all?(scores, &(&1.status == "PENDING"))
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [{:ids, quality_control_version_ids}]},
+               {:reindex, :score_groups, [{:id, score_group_id}]}
+             ]
     end
   end
 
@@ -367,6 +379,12 @@ defmodule TdQx.ScoresTest do
   end
 
   describe "updated_succeeded_score/2" do
+    setup do
+      IndexWorkerMock.clear()
+
+      :ok
+    end
+
     test "parses the result into score_content and set status as SUCCEEDED" do
       score = insert(:score, score_type: "ratio")
       insert(:score_event, type: "STARTED", score: score)
@@ -393,6 +411,10 @@ defmodule TdQx.ScoresTest do
               }} = Scores.updated_succeeded_score(score, params)
 
       assert %{status: "SUCCEEDED"} = Scores.get_score(score.id, preload: :status)
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
+             ]
     end
 
     test "invalid params" do
@@ -416,6 +438,12 @@ defmodule TdQx.ScoresTest do
   end
 
   describe "updated_failed_score/2" do
+    setup do
+      IndexWorkerMock.clear()
+
+      :ok
+    end
+
     test "updates score and set status as FAILED" do
       score = insert(:score, score_type: "ratio")
       insert(:score_event, type: "STARTED", score: score)
@@ -432,6 +460,10 @@ defmodule TdQx.ScoresTest do
               }} = Scores.updated_failed_score(score, params)
 
       assert %{status: "FAILED"} = Scores.get_score(score.id, preload: :status)
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
+             ]
     end
 
     test "invalid params" do
@@ -451,11 +483,21 @@ defmodule TdQx.ScoresTest do
   end
 
   describe "delete_score/1" do
+    setup do
+      IndexWorkerMock.clear()
+
+      :ok
+    end
+
     test "deletes a score" do
       score = insert(:score)
 
       assert {:ok, %Score{}} = Scores.delete_score(score)
       assert is_nil(Scores.get_score(score.id))
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
+             ]
     end
 
     test "deletes score's events" do
@@ -471,6 +513,11 @@ defmodule TdQx.ScoresTest do
   end
 
   describe "insert_event_for_scores/2" do
+    setup do
+      IndexWorkerMock.clear()
+      :ok
+    end
+
     test "inserts events for all scores" do
       scores =
         for _ <- 1..3 do
@@ -481,15 +528,24 @@ defmodule TdQx.ScoresTest do
 
       Scores.insert_event_for_scores(scores, %{type: "QUEUED"})
 
-      assert [preload: :status]
-             |> Scores.list_scores()
-             |> Enum.all?(&(&1.status == "QUEUED"))
+      assert scores = Scores.list_scores(preload: :status)
+      assert Enum.all?(scores, &(&1.status == "QUEUED"))
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions,
+                [ids: Enum.map(scores, & &1.quality_control_version_id)]}
+             ]
     end
   end
 
   describe "create_score_event/1" do
+    setup do
+      IndexWorkerMock.clear()
+      :ok
+    end
+
     test "creates a score_event" do
-      %{id: score_id} = insert(:score)
+      %{id: score_id, quality_control_version_id: quality_control_version_id} = insert(:score)
 
       ttl = DateTime.utc_now()
 
@@ -508,6 +564,10 @@ defmodule TdQx.ScoresTest do
                ttl: ^ttl,
                message: "some message"
              } = score_event
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [ids: quality_control_version_id]}
+             ]
     end
 
     test "renders error for invalid params" do

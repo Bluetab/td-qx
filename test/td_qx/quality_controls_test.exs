@@ -3,7 +3,9 @@ defmodule TdQx.QualityControlsTest do
 
   import TdQx.TestOperators
 
+  alias TdCore.Search.IndexWorkerMock
   alias TdQx.QualityControls
+  alias TdQx.QualityControls.ControlProperties
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
 
@@ -28,11 +30,31 @@ defmodule TdQx.QualityControlsTest do
       insert(:quality_control_version, quality_control: qc3, version: 2, status: "versioned")
       insert(:quality_control_version, quality_control: qc3, version: 3, status: "deprecated")
 
-      assert [
-               %{id: ^qc1_id, latest_version: %{version: 2, status: "draft"}},
-               %{id: ^qc2_id, latest_version: %{version: 1, status: "published"}},
-               %{id: ^qc3_id, latest_version: %{version: 3, status: "deprecated"}}
-             ] = QualityControls.list_quality_control_latest_versions()
+      assert quality_controls = QualityControls.list_quality_control_latest_versions()
+
+      assert quality_controls
+             |> Enum.find(&(&1.id == qc1_id))
+             |> Map.get(:latest_version)
+             |> Map.take([:version, :status]) == %{
+               version: 2,
+               status: "draft"
+             }
+
+      assert quality_controls
+             |> Enum.find(&(&1.id == qc2_id))
+             |> Map.get(:latest_version)
+             |> Map.take([:version, :status]) == %{
+               version: 1,
+               status: "published"
+             }
+
+      assert quality_controls
+             |> Enum.find(&(&1.id == qc3_id))
+             |> Map.get(:latest_version)
+             |> Map.take([:version, :status]) == %{
+               version: 3,
+               status: "deprecated"
+             }
     end
 
     test "get_quality_control!/2 returns the quality_control with given id" do
@@ -126,27 +148,6 @@ defmodule TdQx.QualityControlsTest do
       control_properties: nil,
       version: nil
     }
-
-    test "list_quality_control_versions/0 returns all quality_control_versions" do
-      %{quality_control_id: quality_control_id} =
-        quality_control_version =
-        insert(:quality_control_version, quality_control: insert(:quality_control))
-
-      insert(:quality_control_version, quality_control: insert(:quality_control))
-
-      assert QualityControls.list_quality_control_versions(quality_control_id) |||
-               [
-                 quality_control_version
-               ]
-    end
-
-    test "get_quality_control_version!/1 returns the quality_control_version with given id" do
-      quality_control_version =
-        insert(:quality_control_version, quality_control: insert(:quality_control))
-
-      assert QualityControls.get_quality_control_version!(quality_control_version.id)
-             <~> quality_control_version
-    end
 
     test "create_quality_control_version/1 with valid data creates a quality_control_version" do
       quality_control = insert(:quality_control)
@@ -321,17 +322,337 @@ defmodule TdQx.QualityControlsTest do
       assert {:error, %Ecto.Changeset{}} =
                QualityControls.create_quality_control_version(quality_control, @invalid_attrs)
     end
+  end
 
-    test "delete_quality_control_version/1 deletes the quality_control_version" do
+  describe "list_quality_control_versions/1" do
+    test "list_version with scores in draft" do
+      {_quality_control, version_draft} = create_quality_control("draft", 1)
+      score_succeeded = create_score(version_draft, "SUCCEEDED", "draft")
+
+      score_failed =
+        create_score(version_draft, "FAILED", "draft", score_succeeded.execution_timestamp)
+
+      [version] =
+        QualityControls.list_quality_control_versions()
+
+      assert version.id == version_draft.id
+      assert version.latest_score.id == score_failed.id
+      assert is_nil(version.final_score.id)
+    end
+
+    test "list_version with scores in draft and not loaded in published versions" do
+      {quality_control, version_published} = create_quality_control("published", 1)
+
+      version_draft = create_quality_control_version(quality_control, "draft", 2)
+
+      score_succeeded = create_score(version_draft, "SUCCEEDED", "draft")
+
+      score_failed =
+        create_score(version_draft, "FAILED", "draft", score_succeeded.execution_timestamp)
+
+      versions =
+        QualityControls.list_quality_control_versions()
+
+      assert [result_version_draft] =
+               Enum.filter(versions, &(&1.id == version_draft.id))
+
+      assert result_version_draft.latest_score.id == score_failed.id
+      assert is_nil(result_version_draft.final_score.id)
+
+      assert [result_version_published] =
+               Enum.filter(versions, &(&1.id == version_published.id))
+
+      assert is_nil(result_version_published.latest_score)
+      assert is_nil(result_version_published.final_score.id)
+    end
+
+    test "list_version with scores in draft and published with the same version" do
+      {_quality_control, version_published} = create_quality_control("published", 1)
+      score_draft = create_score(version_published, "FAILED", "draft")
+
+      [version] = QualityControls.list_quality_control_versions()
+      assert version.latest_score.id == score_draft.id
+      assert is_nil(version.final_score.id)
+
+      score_succeeded =
+        create_score(version_published, "SUCCEEDED", "published", score_draft.execution_timestamp)
+
+      [version] = QualityControls.list_quality_control_versions()
+
+      assert version.latest_score.id == score_succeeded.id
+      assert version.final_score.id == score_succeeded.id
+    end
+
+    test "list_version with scores in published and versioned" do
+      {quality_control, version_versioned} = create_quality_control("versioned", 1)
+      version_published = create_quality_control_version(quality_control, "published", 2)
+
+      score_versioned = create_score(version_versioned, "FAILED", "published")
+
+      versiones = QualityControls.list_quality_control_versions()
+
+      assert [version] =
+               Enum.filter(versiones, &(&1.id == version_versioned.id))
+
+      assert version.latest_score.id == score_versioned.id
+      assert version.final_score.id == score_versioned.id
+
+      assert [result_version_published] =
+               Enum.filter(versiones, &(&1.id == version_published.id))
+
+      assert is_nil(result_version_published.latest_score)
+      assert result_version_published.final_score.id == score_versioned.id
+
+      score_succeeded =
+        create_score(
+          version_published,
+          "SUCCEEDED",
+          "published",
+          score_versioned.execution_timestamp
+        )
+
+      versiones = QualityControls.list_quality_control_versions()
+
+      assert [version] =
+               Enum.filter(versiones, &(&1.id == version_published.id))
+
+      assert version.latest_score.id == score_succeeded.id
+      assert version.final_score.id == score_succeeded.id
+    end
+
+    test "list_version with scores in deprecated and versioned" do
+      {quality_control, version_versioned} = create_quality_control("versioned", 1)
+      deprecated = create_quality_control_version(quality_control, "deprecated", 2)
+
+      score_versioned = create_score(version_versioned, "FAILED", "published")
+
+      versiones = QualityControls.list_quality_control_versions()
+
+      assert [version] =
+               Enum.filter(versiones, &(&1.id == version_versioned.id))
+
+      assert version.latest_score.id == score_versioned.id
+      assert version.final_score.id == score_versioned.id
+
+      assert [result_version_deprecated] =
+               Enum.filter(versiones, &(&1.id == deprecated.id))
+
+      assert is_nil(result_version_deprecated.latest_score)
+      assert result_version_deprecated.final_score.id == score_versioned.id
+
+      score_succeeded =
+        create_score(
+          deprecated,
+          "SUCCEEDED",
+          "published",
+          score_versioned.execution_timestamp
+        )
+
+      versiones = QualityControls.list_quality_control_versions()
+
+      assert [version] =
+               Enum.filter(versiones, &(&1.id == deprecated.id))
+
+      assert version.latest_score.id == score_succeeded.id
+      assert version.final_score.id == score_succeeded.id
+    end
+
+    test "lists versions by quality_control_id specifying latest version" do
+      {quality_control_draft, version_draft} = create_quality_control("draft", 1)
+
+      assert [draft_version] =
+               QualityControls.list_quality_control_versions(
+                 quality_control_ids: [quality_control_draft.id]
+               )
+
+      assert draft_version.id == version_draft.id
+      assert draft_version.latest
+      assert draft_version.version == 1
+      assert draft_version.status == "draft"
+    end
+  end
+
+  describe "get_quality_control_version/3" do
+    setup do
+      domain = %{id: domain_id} = CacheHelpers.insert_domain()
+      quality_control = insert(:quality_control, domain_ids: [domain_id])
+
+      versioned =
+        insert(:quality_control_version,
+          quality_control: quality_control,
+          status: "versioned",
+          version: 1
+        )
+
+      published =
+        insert(:quality_control_version,
+          quality_control: quality_control,
+          status: "published",
+          version: 2
+        )
+
+      [quality_control: quality_control, versions: [versioned, published], domain: domain]
+    end
+
+    test "gets quality control version with preloaded quality control by default", %{
+      quality_control: quality_control,
+      versions: [versioned, published]
+    } do
+      assert %QualityControlVersion{} =
+               version = QualityControls.get_quality_control_version(quality_control.id, 1)
+
+      assert version.id == versioned.id
+      assert version.version == 1
+      assert version.status == "versioned"
+      assert version.quality_control.id == quality_control.id
+      refute version.latest
+
+      assert %QualityControlVersion{} =
+               version = QualityControls.get_quality_control_version(quality_control.id, 2)
+
+      assert version.id == published.id
+      assert version.version == 2
+      assert version.status == "published"
+      assert version.quality_control.id == quality_control.id
+      assert version.latest
+    end
+
+    test "gets quality control version with preloads and enriched attributes", %{
+      versions: [versioned | _tail],
+      domain: domain
+    } do
+      assert %QualityControlVersion{
+               quality_control: %QualityControl{domains: [enriched_domain]},
+               control_properties: %ControlProperties{} = control_properties
+             } =
+               QualityControls.get_quality_control_version(
+                 versioned.quality_control_id,
+                 versioned.version,
+                 enrich: [:domains, :control_properties],
+                 preload: [quality_control: :versions]
+               )
+
+      assert [Map.take(enriched_domain, [:id, :name, :external_id])] == [
+               Map.take(domain, [:id, :name, :external_id])
+             ]
+
+      refute versioned.control_properties.ratio.resource.embedded
+      assert control_properties.ratio.resource.embedded
+    end
+
+    test "gets quality control version with versions preload ordered desc", %{
+      versions: [versioned | _tail]
+    } do
+      assert %QualityControlVersion{quality_control: %QualityControl{versions: versions}} =
+               QualityControls.get_quality_control_version(
+                 versioned.quality_control_id,
+                 versioned.version,
+                 preload: [quality_control: {:versions, :desc}]
+               )
+
+      assert [published, versioned] = versions
+      assert published.version == 2
+      assert versioned.version == 1
+    end
+  end
+
+  describe "delete_quality_control_version/1" do
+    setup do
+      IndexWorkerMock.clear()
+      :ok
+    end
+
+    test "deletes quality control when the version to delete is the only one" do
       quality_control_version =
-        insert(:quality_control_version, quality_control: insert(:quality_control))
+        %{quality_control: %{id: id}} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: insert(:quality_control)
+        )
 
-      assert {:ok, %QualityControlVersion{}} =
+      assert {:ok, %QualityControl{id: ^id}} =
                QualityControls.delete_quality_control_version(quality_control_version)
 
-      assert_raise Ecto.NoResultsError, fn ->
-        QualityControls.get_quality_control_version!(quality_control_version.id)
-      end
+      refute Repo.get(QualityControl, id)
+      refute Repo.get(QualityControlVersion, quality_control_version.id)
+
+      assert IndexWorkerMock.calls() == [
+               {:delete, :quality_control_versions, [quality_control_version.id]}
+             ]
     end
+
+    test "deletes quality control version when the quality control has more versions" do
+      quality_control = insert(:quality_control)
+
+      versioned =
+        insert(:quality_control_version,
+          status: "versioned",
+          quality_control: quality_control,
+          version: 1
+        )
+
+      draft =
+        %{id: id} =
+        insert(:quality_control_version,
+          status: "draft",
+          quality_control: quality_control,
+          version: 2
+        )
+
+      assert {:ok, %QualityControlVersion{id: ^id}} =
+               QualityControls.delete_quality_control_version(draft)
+
+      assert Repo.get(QualityControl, quality_control.id)
+      assert Repo.get(QualityControlVersion, versioned.id)
+      refute Repo.get(QualityControlVersion, draft.id)
+
+      assert IndexWorkerMock.calls() == [{:delete, :quality_control_versions, [draft.id]}]
+    end
+
+    test "returns forbidden when quality control version is not in draft" do
+      quality_control = insert(:quality_control)
+
+      versioned =
+        insert(:quality_control_version,
+          status: "versioned",
+          quality_control: quality_control,
+          version: 1
+        )
+
+      assert {:error, :forbidden} = QualityControls.delete_quality_control_version(versioned)
+      assert Repo.get(QualityControl, quality_control.id)
+      assert Repo.get(QualityControlVersion, versioned.id)
+    end
+  end
+
+  defp create_score(version, type_event, quality_control_status),
+    do: create_score(version, type_event, quality_control_status, DateTime.utc_now())
+
+  defp create_score(version, type_event, quality_control_status, execution_timestamp) do
+    score =
+      insert(:score,
+        quality_control_version: version,
+        quality_control_status: quality_control_status,
+        execution_timestamp: DateTime.add(execution_timestamp, 60)
+      )
+
+    insert(:score_event, type: "PENDING", score: score)
+    insert(:score_event, type: type_event, score: score)
+
+    score
+  end
+
+  defp create_quality_control(qcv_status, qcv_version) do
+    qc = insert(:quality_control)
+    qvc = create_quality_control_version(qc, qcv_status, qcv_version)
+    {qc, qvc}
+  end
+
+  defp create_quality_control_version(qc, status, version) do
+    insert(:quality_control_version,
+      quality_control: qc,
+      status: status,
+      version: version
+    )
   end
 end

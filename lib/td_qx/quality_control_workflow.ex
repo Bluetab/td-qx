@@ -13,6 +13,8 @@ defmodule TdQx.QualityControlWorkflow do
   alias TdQx.Repo
   alias TdQx.Search.Indexer
 
+  @valid_execution_statuses ~w(draft pending_approval published)
+
   def create_quality_control(params) do
     Multi.new()
     |> Multi.run(:quality_control, fn _, _ -> QualityControls.create_quality_control(params) end)
@@ -98,49 +100,84 @@ defmodule TdQx.QualityControlWorkflow do
   defp preload_quality_control({:ok, qcv}), do: {:ok, Repo.preload(qcv, :quality_control)}
   defp preload_quality_control(error), do: error
 
-  def valid_action?(%{latest_version: %{status: status} = latest_version}, "publish")
-      when status in ["draft", "pending_approval"],
-      do: QualityControlVersion.valid_publish_version(latest_version)
+  def valid_action?(%QualityControlVersion{} = quality_control_version, action) do
+    valid_action_for_version?(quality_control_version, action)
+  end
 
-  def valid_action?(%{latest_version: %{status: "published"}}, "deprecate"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "published"}}, "execute"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "deprecated"}}, "restore"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "rejected"}}, "send_to_draft"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "pending_approval"}}, "reject"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "pending_approval"}}, "execute"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "draft"} = latest_version}, "send_to_approval"),
-    do: QualityControlVersion.valid_publish_version(latest_version)
-
-  def valid_action?(%{latest_version: %{status: "draft"}}, "edit"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "draft"}}, "execute"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: "published"}}, "create_draft"),
-    do: true
-
-  def valid_action?(%{latest_version: %{status: status}}, "toggle_active")
-      when status != "deprecated",
-      do: true
-
-  def valid_action?(_, "delete_score"), do: true
-
-  def valid_action?(_, "update_main"), do: true
+  def valid_action?(
+        %QualityControl{latest_version: %QualityControlVersion{} = quality_control_version},
+        action
+      ) do
+    valid_action_for_version?(
+      %QualityControlVersion{quality_control_version | latest: true},
+      action
+    )
+  end
 
   def valid_action?(_, _), do: false
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: status, latest: true} = latest_version,
+         "publish"
+       )
+       when status in ["draft", "pending_approval"],
+       do: QualityControlVersion.valid_publish_version(latest_version)
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: "published", latest: true},
+         "deprecate"
+       ),
+       do: true
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: "deprecated", latest: true},
+         "restore"
+       ),
+       do: true
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: "rejected", latest: true},
+         "send_to_draft"
+       ),
+       do: true
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: "pending_approval", latest: true},
+         "reject"
+       ),
+       do: true
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: "draft", latest: true} = latest_version,
+         "send_to_approval"
+       ),
+       do: QualityControlVersion.valid_publish_version(latest_version)
+
+  defp valid_action_for_version?(%QualityControlVersion{status: "draft", latest: true}, "edit"),
+    do: true
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: "published", latest: true},
+         "create_draft"
+       ),
+       do: true
+
+  defp valid_action_for_version?(
+         %QualityControlVersion{status: status, latest: true},
+         "toggle_active"
+       )
+       when status != "deprecated",
+       do: true
+
+  defp valid_action_for_version?(%QualityControlVersion{status: status}, "execute")
+       when status in @valid_execution_statuses,
+       do: true
+
+  defp valid_action_for_version?(%QualityControlVersion{status: "draft"}, "delete"), do: true
+
+  defp valid_action_for_version?(%QualityControlVersion{latest: true}, "delete_score"), do: true
+  defp valid_action_for_version?(%QualityControlVersion{latest: true}, "update_main"), do: true
+  defp valid_action_for_version?(_, _), do: false
 
   def changesets_for_action(
         %{latest_version: %{status: status} = latest_version, published_version: nil},
@@ -225,17 +262,17 @@ defmodule TdQx.QualityControlWorkflow do
         {:ok,
          %QualityControlVersion{quality_control_id: quality_control_id} = quality_control_version}
       ) do
-    Indexer.reindex([quality_control_id])
+    Indexer.reindex(quality_control_ids: [quality_control_id])
     {:ok, quality_control_version}
   end
 
   def reindex_quality_control({:ok, %QualityControl{id: id} = quality_control}) do
-    Indexer.reindex([id])
+    Indexer.reindex(quality_control_ids: [id])
     {:ok, quality_control}
   end
 
   def reindex_quality_control({:ok, %{quality_control_version: quality_control_version}}) do
-    Indexer.reindex([quality_control_version.quality_control_id])
+    Indexer.reindex(quality_control_ids: [quality_control_version.quality_control.id])
     {:ok, quality_control_version}
   end
 

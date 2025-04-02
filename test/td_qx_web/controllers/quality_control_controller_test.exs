@@ -11,32 +11,6 @@ defmodule TdQxWeb.QualityControlControllerTest do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
-  describe "index versions" do
-    @tag authentication: [role: "admin"]
-    test "lists all versions of a quality_controls", %{conn: conn} do
-      %{id: qc_id} = quality_control = insert(:quality_control)
-
-      insert(:quality_control_version,
-        status: "published",
-        version: 1,
-        quality_control: quality_control
-      )
-
-      insert(:quality_control_version,
-        status: "draft",
-        version: 2,
-        quality_control: quality_control
-      )
-
-      conn = get(conn, ~p"/api/quality_controls/#{qc_id}/versions")
-
-      assert [
-               %{"version" => 1, "status" => "published", "id" => qc_id},
-               %{"version" => 2, "status" => "draft", "id" => qc_id}
-             ] ||| json_response(conn, 200)["data"]
-    end
-  end
-
   describe "show" do
     @tag authentication: [role: "admin"]
     test "will return actions for published version", %{conn: conn} do
@@ -197,7 +171,16 @@ defmodule TdQxWeb.QualityControlControllerTest do
 
       conn = get(conn, ~p"/api/quality_controls/#{id}")
 
-      assert %{"_actions" => ["edit", "toggle_active", "delete_score", "update_main", "execute"]} =
+      assert %{
+               "_actions" => [
+                 "edit",
+                 "toggle_active",
+                 "delete_score",
+                 "update_main",
+                 "execute",
+                 "delete"
+               ]
+             } =
                json_response(conn, 200)
     end
 
@@ -227,7 +210,8 @@ defmodule TdQxWeb.QualityControlControllerTest do
                "toggle_active",
                "delete_score",
                "update_main",
-               "execute"
+               "execute",
+               "delete"
              ] == actions
     end
 

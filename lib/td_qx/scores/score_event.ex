@@ -37,4 +37,6 @@ defmodule TdQx.Scores.ScoreEvent do
     |> validate_inclusion(:type, @valid_types)
     |> foreign_key_constraint(:score_id)
   end
+
+  def valid_types, do: @valid_types
 end
