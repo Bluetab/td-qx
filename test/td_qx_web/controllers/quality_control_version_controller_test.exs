@@ -110,16 +110,16 @@ defmodule TdQxWeb.QualityControlVersionControllerTest do
     end
 
     @tag authentication: [role: "admin"]
-    test "will return enriched resources on error_count control_properties", %{conn: conn} do
+    test "will return enriched resources on count control_properties", %{conn: conn} do
       %{quality_control_id: id, version: version} =
         insert(:quality_control_version,
           status: "published",
           quality_control: insert(:quality_control),
-          control_mode: "error_count",
+          control_mode: "count",
           control_properties:
             build(:control_properties,
-              error_count:
-                build(:cp_error_count,
+              count:
+                build(:cp_count,
                   errors_resource: build(:resource, type: "data_structure", id: 888)
                 )
             )

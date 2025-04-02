@@ -9,7 +9,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
   alias TdQx.QualityControls.ScoreCriterias
   alias TdQx.Scores.Score
   alias TdQx.Scores.ScoreContent
-  alias TdQx.Scores.ScoreContents.ErrorCount
+  alias TdQx.Scores.ScoreContents.Count
   alias TdQx.Scores.ScoreContents.Ratio
   alias TdQx.Scores.ScoreEvent
 
@@ -65,7 +65,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
 
     defp with_score_criteria(document, %QualityControlVersion{
            score_criteria: %ScoreCriteria{
-             error_count: %ScoreCriterias.ErrorCount{goal: goal, maximum: maximum}
+             count: %ScoreCriterias.Count{goal: goal, maximum: maximum}
            }
          }) do
       Map.put(document, :score_criteria, %{goal: goal, maximum: maximum})
@@ -128,23 +128,23 @@ defmodule TdQx.QualityControls.ElasticDocument do
 
     defp score_content(
            %QualityControlVersion{
-             control_mode: "error_count" = control_mode,
-             score_criteria: %ScoreCriteria{error_count: %ScoreCriterias.ErrorCount{} = criteria}
+             control_mode: "count" = control_mode,
+             score_criteria: %ScoreCriteria{count: %ScoreCriterias.Count{} = criteria}
            },
            score
          ) do
       %{
         score_content: %ScoreContent{
-          error_count: %ErrorCount{error_count: error_count} = error
+          count: %Count{count: count} = error
         }
       } = score
 
-      message = result_message(error_count, criteria, control_mode)
+      message = result_message(count, criteria, control_mode)
 
       %{
-        result: error_count,
+        result: count,
         result_message: message,
-        error_count_content: ErrorCount.to_json(error)
+        count_content: Count.to_json(error)
       }
     end
 
@@ -221,12 +221,12 @@ defmodule TdQx.QualityControls.ElasticDocument do
     end
 
     defp meets_goal?(count, criteria, type_criteria) do
-      (type_criteria in ["error_count", "deviation"] && count < criteria.goal) or
+      (type_criteria in ["count", "deviation"] && count < criteria.goal) or
         (type_criteria == "percentage" && count > criteria.goal)
     end
 
     defp under_goal?(count, criteria, type_criteria) do
-      (type_criteria in ["error_count", "deviation"] && count < criteria.maximum) or
+      (type_criteria in ["count", "deviation"] && count < criteria.maximum) or
         (type_criteria == "percentage" && count > criteria.minimum)
     end
 
@@ -272,7 +272,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
                 minimum: %{type: "text", index: false}
               }
             },
-            error_count: %{
+            count: %{
               properties: %{
                 goal: %{type: "text", index: false},
                 maximum: %{type: "text", index: false}
@@ -293,7 +293,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
               fields: %{sort: %{type: "keyword", normalizer: "sortable"}},
               null_value: ""
             },
-            error_count_content: %{properties: %{error_count: %{type: "long", index: false}}},
+            count_content: %{properties: %{count: %{type: "long", index: false}}},
             ratio_content: %{
               properties: %{
                 total_count: %{type: "long", index: false},

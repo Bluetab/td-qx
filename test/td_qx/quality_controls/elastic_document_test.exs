@@ -83,15 +83,15 @@ defmodule TdQx.QualityControls.ElasticDocumentTest do
             df_type: template_name,
             dynamic_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
             quality_control: insert(:quality_control),
-            control_mode: "error_count",
-            score_criteria: build(:score_criteria, error_count: build(:sc_error_count))
+            control_mode: "count",
+            score_criteria: build(:score_criteria, count: build(:sc_count))
           )
 
         score_content =
-          build(:score_content, error_count: build(:score_content_error_count))
+          build(:score_content, count: build(:score_content_count))
 
         {score_base, latest_score, final_score} =
-          get_scores_by_status(status, quality_control_version, score_content, "error_count")
+          get_scores_by_status(status, quality_control_version, score_content, "count")
 
         quality_control_version =
           quality_control_version
@@ -104,7 +104,7 @@ defmodule TdQx.QualityControls.ElasticDocumentTest do
         assert document.latest_score == %{
                  status: "succeeded",
                  executed_at: score_base.execution_timestamp,
-                 error_count_content: %{error_count: 100},
+                 count_content: %{count: 100},
                  result_message: "under_threshold",
                  type: score_base.score_type,
                  result: 100

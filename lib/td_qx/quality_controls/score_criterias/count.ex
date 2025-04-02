@@ -1,6 +1,6 @@
-defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
+defmodule TdQx.QualityControls.ScoreCriterias.Count do
   @moduledoc """
-  Ecto Schema module for QualityControl ScoreCriteria ErrorCount
+  Ecto Schema module for QualityControl ScoreCriteria Count
   """
 
   use Ecto.Schema
@@ -9,8 +9,8 @@ defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
 
   @primary_key false
   embedded_schema do
-    field :goal, :integer
-    field :maximum, :integer
+    field(:goal, :integer)
+    field(:maximum, :integer)
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params) do
@@ -25,10 +25,10 @@ defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
     |> validate_required([:goal, :maximum])
   end
 
-  def to_json(%__MODULE__{} = error_count) do
+  def to_json(%__MODULE__{} = count) do
     %{
-      goal: error_count.goal,
-      maximum: error_count.maximum
+      goal: count.goal,
+      maximum: count.maximum
     }
   end
 

@@ -233,7 +233,7 @@ defmodule TdQx.Scores do
             fragment(
               "CASE
                 WHEN ? IN ('deviation', 'percentage') THEN 'ratio'
-                WHEN ? IN ('error_count') THEN 'error_count'
+                WHEN ? IN ('count') THEN 'count'
                 ELSE NULL
               END",
               qcv.control_mode,

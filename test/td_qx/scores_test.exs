@@ -307,7 +307,7 @@ defmodule TdQx.ScoresTest do
     for {control_mode, score_type} <- [
           {"deviation", "ratio"},
           {"percentage", "ratio"},
-          {"error_count", "error_count"}
+          {"count", "count"}
         ] do
       @tag [control_mode: control_mode, score_type: score_type]
       test "updates score_type for control_mode #{control_mode}", %{
