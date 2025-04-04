@@ -9,8 +9,8 @@ defmodule TdQx.QualityControls.ScoreCriterias.Count do
 
   @primary_key false
   embedded_schema do
-    field(:goal, :integer)
-    field(:maximum, :integer)
+    field :goal, :integer
+    field :maximum, :integer
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params) do

@@ -9,7 +9,7 @@ defmodule TdQx.Scores.ScoreContents.Count do
 
   @primary_key false
   embedded_schema do
-    field(:count, :integer)
+    field :count, :integer
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params) do
