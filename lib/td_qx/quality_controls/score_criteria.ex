@@ -14,10 +14,10 @@ defmodule TdQx.QualityControls.ScoreCriteria do
 
   @primary_key false
   embedded_schema do
-    embeds_one(:deviation, Deviation, on_replace: :delete)
-    embeds_one(:count, Count, on_replace: :delete)
-    embeds_one(:percentage, Percentage, on_replace: :delete)
-    embeds_one(:error_count, ErrorCount, on_replace: :delete)
+    embeds_one :deviation, Deviation, on_replace: :delete
+    embeds_one :count, Count, on_replace: :delete
+    embeds_one :percentage, Percentage, on_replace: :delete
+    embeds_one :error_count, ErrorCount, on_replace: :delete
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params, control_mode) do
