@@ -486,6 +486,9 @@ defmodule TdQx.Factory do
   def score_criteria_factory(%{percentage: %{} = percentage}),
     do: %ScoreCriteria{percentage: percentage}
 
+  def score_criteria_factory(%{error_count: %{} = error_count}),
+    do: %ScoreCriteria{error_count: error_count}
+
   def score_criteria_factory(_), do: %ScoreCriteria{percentage: build(:sc_percentage)}
 
   def sc_deviation_factory(attrs) do
@@ -508,6 +511,14 @@ defmodule TdQx.Factory do
     %ScoreCriterias.Percentage{
       goal: 90.0,
       minimum: 75.0
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def sc_error_count_factory(attrs) do
+    %ScoreCriterias.ErrorCount{
+      goal: 5.0,
+      maximum: 15.0
     }
     |> merge_attributes(attrs)
   end

@@ -8,6 +8,7 @@ defmodule TdQx.QualityControls.ScoreCriteria do
   import Ecto.Changeset
 
   alias TdQx.QualityControls.ScoreCriterias.Count
+  alias TdQx.QualityControls.ScoreCriterias.ErrorCount
   alias TdQx.QualityControls.ScoreCriterias.Deviation
   alias TdQx.QualityControls.ScoreCriterias.Percentage
 
@@ -16,6 +17,7 @@ defmodule TdQx.QualityControls.ScoreCriteria do
     embeds_one(:deviation, Deviation, on_replace: :delete)
     embeds_one(:count, Count, on_replace: :delete)
     embeds_one(:percentage, Percentage, on_replace: :delete)
+    embeds_one(:error_count, ErrorCount, on_replace: :delete)
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params, control_mode) do
@@ -35,6 +37,9 @@ defmodule TdQx.QualityControls.ScoreCriteria do
   def to_json(%__MODULE__{percentage: %Percentage{} = percentage}),
     do: Percentage.to_json(percentage)
 
+  def to_json(%__MODULE__{error_count: %ErrorCount{} = error_count}),
+    do: ErrorCount.to_json(error_count)
+
   def to_json(_), do: nil
 
   defp cast_score_criteria_embed(changeset, "deviation"),
@@ -45,6 +50,9 @@ defmodule TdQx.QualityControls.ScoreCriteria do
 
   defp cast_score_criteria_embed(changeset, "percentage"),
     do: cast_embed(changeset, :percentage, with: &Percentage.changeset/2)
+
+  defp cast_score_criteria_embed(changeset, "error_count"),
+    do: cast_embed(changeset, :error_count, with: &ErrorCount.changeset/2)
 
   defp cast_score_criteria_embed(changeset, _),
     do: add_error(changeset, :control_mode, "invalid")

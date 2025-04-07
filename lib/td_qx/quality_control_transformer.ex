@@ -66,7 +66,7 @@ defmodule TdQx.QualityControlTransformer do
         control_mode: mode,
         control_properties: %{ratio: %{resource: resource, validation: clauses}}
       })
-      when mode in ["deviation", "percentage"] do
+      when mode in ["deviation", "percentage", "error_count"] do
     from = %Queryable{
       type: "from",
       id: 0,

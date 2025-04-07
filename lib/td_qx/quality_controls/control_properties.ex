@@ -34,8 +34,10 @@ defmodule TdQx.QualityControls.ControlProperties do
   def to_json(_), do: nil
 
   defp control_mode_to_properties("count"), do: "count"
-  defp control_mode_to_properties("deviation"), do: "ratio"
-  defp control_mode_to_properties("percentage"), do: "ratio"
+
+  defp control_mode_to_properties(type) when type in ["deviation", "error_count", "percentage"],
+    do: "ratio"
+
   defp control_mode_to_properties(_), do: "invalid"
 
   defp cast_control_properties_embed(changeset, "count"),

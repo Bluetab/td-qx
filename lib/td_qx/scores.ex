@@ -232,7 +232,7 @@ defmodule TdQx.Scores do
           score_type:
             fragment(
               "CASE
-                WHEN ? IN ('deviation', 'percentage') THEN 'ratio'
+                WHEN ? IN ('deviation', 'percentage', 'error_count') THEN 'ratio'
                 WHEN ? IN ('count') THEN 'count'
                 ELSE NULL
               END",

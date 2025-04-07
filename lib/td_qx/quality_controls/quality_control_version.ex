@@ -38,26 +38,26 @@ defmodule TdQx.QualityControls.QualityControlVersion do
     {"deprecated", "restore"}
   ]
 
-  @valid_control_modes ["deviation", "percentage", "count"]
+  @valid_control_modes ["deviation", "percentage", "count", "error_count"]
 
   schema "quality_control_versions" do
-    field :name, :string
-    field :status, :string, default: "draft"
-    field :version, :integer, default: 1
-    field :dynamic_content, :map
-    field :df_type, :string
-    field :control_mode, :string
+    field(:name, :string)
+    field(:status, :string, default: "draft")
+    field(:version, :integer, default: 1)
+    field(:dynamic_content, :map)
+    field(:df_type, :string)
+    field(:control_mode, :string)
 
-    belongs_to :quality_control, QualityControl
-    embeds_one :score_criteria, ScoreCriteria, on_replace: :delete
-    embeds_one :control_properties, ControlProperties, on_replace: :delete
+    belongs_to(:quality_control, QualityControl)
+    embeds_one(:score_criteria, ScoreCriteria, on_replace: :delete)
+    embeds_one(:control_properties, ControlProperties, on_replace: :delete)
 
-    field :queries, {:array, :map}, virtual: true
-    field :latest, :boolean, virtual: true, default: false
-    field :latest_score, :map, virtual: true
-    field :final_score, :map, virtual: true
+    field(:queries, {:array, :map}, virtual: true)
+    field(:latest, :boolean, virtual: true, default: false)
+    field(:latest_score, :map, virtual: true)
+    field(:final_score, :map, virtual: true)
 
-    timestamps type: :utc_datetime_usec
+    timestamps(type: :utc_datetime_usec)
   end
 
   def valid_actions, do: @valid_actions

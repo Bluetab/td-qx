@@ -213,6 +213,68 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
 
       assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
     end
+
+    test "valid control_properties field for error_count control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "error_count",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)]
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
+
+    test "validates resource field for error_count control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "error_count",
+        control_properties: %{
+          resource: %{}
+        }
+      }
+
+      assert %{valid?: false} =
+               changeset = QualityControlVersion.create_changeset(quality_control, params, 1)
+
+      assert %{
+               control_properties: %{
+                 ratio: %{resource: %{id: ["can't be blank"], type: ["can't be blank"]}}
+               }
+             } =
+               errors_on(changeset)
+    end
+
+    test "validates validation field for error_count control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "error_count",
+        control_properties: %{
+          validation: [%{}]
+        }
+      }
+
+      assert %{valid?: false} =
+               changeset = QualityControlVersion.create_changeset(quality_control, params, 1)
+
+      assert %{
+               control_properties: %{
+                 ratio: %{validation: [%{expressions: ["can't be blank"]}]}
+               }
+             } =
+               errors_on(changeset)
+    end
   end
 
   describe "status_changeset/2" do

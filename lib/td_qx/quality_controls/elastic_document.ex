@@ -89,6 +89,15 @@ defmodule TdQx.QualityControls.ElasticDocument do
       Map.put(document, :score_criteria, percentage)
     end
 
+    defp with_score_criteria(document, %QualityControlVersion{
+           score_criteria: %ScoreCriteria{
+             error_count: %ScoreCriterias.ErrorCount{goal: goal, maximum: maximum}
+           }
+         }) do
+      error_count = %{goal: Float.round(goal, 2), maximum: Float.round(maximum, 2)}
+      Map.put(document, :score_criteria, error_count)
+    end
+
     defp with_score_criteria(document, _other), do: document
 
     defp with_latest_score(version, %QualityControlVersion{} = qcv) do
@@ -161,7 +170,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
         }
       } = score
 
-      deviation = calculate_percent_deviation(validation_count, total_count)
+      deviation = calculate_ratio(validation_count, total_count)
       message = result_message(deviation, criteria, control_mode)
 
       %{
@@ -184,11 +193,34 @@ defmodule TdQx.QualityControls.ElasticDocument do
         }
       } = score
 
-      percentage = calculate_percent_deviation(validation_count, total_count)
+      percentage = calculate_ratio(validation_count, total_count)
 
       message = result_message(percentage, criteria, control_mode)
 
       %{result: percentage, result_message: message, ratio_content: Ratio.to_json(ratio)}
+    end
+
+    defp score_content(
+           %QualityControlVersion{
+             control_mode: "error_count" = control_mode,
+             score_criteria: %ScoreCriteria{error_count: %ScoreCriterias.ErrorCount{} = criteria}
+           },
+           score
+         ) do
+      %{
+        score_content: %ScoreContent{
+          ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
+        }
+      } = score
+
+      error_count = calculate_ratio(validation_count, total_count)
+      message = result_message(error_count, criteria, control_mode)
+
+      %{
+        result: error_count,
+        result_message: message,
+        ratio_content: Ratio.to_json(ratio)
+      }
     end
 
     defp score_content(_quality_control_version, _score), do: %{result_message: nil}
@@ -221,18 +253,18 @@ defmodule TdQx.QualityControls.ElasticDocument do
     end
 
     defp meets_goal?(count, criteria, type_criteria) do
-      (type_criteria in ["count", "deviation"] && count < criteria.goal) or
+      (type_criteria in ["count", "deviation", "error_count"] && count < criteria.goal) or
         (type_criteria == "percentage" && count > criteria.goal)
     end
 
     defp under_goal?(count, criteria, type_criteria) do
-      (type_criteria in ["count", "deviation"] && count < criteria.maximum) or
+      (type_criteria in ["count", "deviation", "error_count"] && count < criteria.maximum) or
         (type_criteria == "percentage" && count > criteria.minimum)
     end
 
-    defp calculate_percent_deviation(_validation_count, 0), do: nil
+    defp calculate_ratio(_validation_count, 0), do: nil
 
-    defp calculate_percent_deviation(validation_count, total_count),
+    defp calculate_ratio(validation_count, total_count),
       do: Float.round(validation_count / total_count * 100, 2)
   end
 
@@ -273,6 +305,12 @@ defmodule TdQx.QualityControls.ElasticDocument do
               }
             },
             count: %{
+              properties: %{
+                goal: %{type: "text", index: false},
+                maximum: %{type: "text", index: false}
+              }
+            },
+            error_count: %{
               properties: %{
                 goal: %{type: "text", index: false},
                 maximum: %{type: "text", index: false}
