@@ -8,8 +8,8 @@ defmodule TdQx.QualityControls.ScoreCriteria do
   import Ecto.Changeset
 
   alias TdQx.QualityControls.ScoreCriterias.Count
-  alias TdQx.QualityControls.ScoreCriterias.ErrorCount
   alias TdQx.QualityControls.ScoreCriterias.Deviation
+  alias TdQx.QualityControls.ScoreCriterias.ErrorCount
   alias TdQx.QualityControls.ScoreCriterias.Percentage
 
   @primary_key false
