@@ -6,11 +6,17 @@ defmodule TdQx.Scores do
   import Ecto.Query, warn: false
 
   alias Ecto.Multi
-  alias TdQx.Repo
+  alias TdQx.QualityControls.QualityControlVersion
+  alias TdQx.QualityControls.ScoreCriteria
+  alias TdQx.QualityControls.ScoreCriterias
   alias TdQx.Scores.Score
+  alias TdQx.Scores.ScoreContent
+  alias TdQx.Scores.ScoreContents.Count
+  alias TdQx.Scores.ScoreContents.Ratio
   alias TdQx.Scores.ScoreEvent
   alias TdQx.Scores.ScoreGroup
   alias TdQx.Search.Indexer
+  alias TdQx.Repo
 
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
@@ -325,6 +331,138 @@ defmodule TdQx.Scores do
     |> Repo.insert()
     |> tap(&on_event_insert(&1, reindex))
   end
+
+  def score_content(
+        %QualityControlVersion{
+          control_mode: "count" = control_mode,
+          score_criteria: %ScoreCriteria{count: %ScoreCriterias.Count{} = criteria}
+        },
+        score
+      ) do
+    %{
+      score_content: %ScoreContent{
+        count: %Count{count: count} = error
+      }
+    } = score
+
+    message = result_message(count, criteria, control_mode)
+
+    %{
+      result: count,
+      result_message: message,
+      count_content: Count.to_json(error)
+    }
+  end
+
+  def score_content(
+        %QualityControlVersion{
+          control_mode: "deviation" = control_mode,
+          score_criteria: %ScoreCriteria{deviation: %ScoreCriterias.Deviation{} = criteria}
+        },
+        score
+      ) do
+    %{
+      score_content: %ScoreContent{
+        ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
+      }
+    } = score
+
+    deviation = calculate_ratio(validation_count, total_count)
+    message = result_message(deviation, criteria, control_mode)
+
+    %{
+      result: deviation,
+      result_message: message,
+      ratio_content: Ratio.to_json(ratio)
+    }
+  end
+
+  def score_content(
+        %QualityControlVersion{
+          control_mode: "percentage" = control_mode,
+          score_criteria: %ScoreCriteria{percentage: %ScoreCriterias.Percentage{} = criteria}
+        },
+        score
+      ) do
+    %{
+      score_content: %ScoreContent{
+        ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
+      }
+    } = score
+
+    percentage = calculate_ratio(validation_count, total_count)
+
+    message = result_message(percentage, criteria, control_mode)
+
+    %{result: percentage, result_message: message, ratio_content: Ratio.to_json(ratio)}
+  end
+
+  def score_content(
+        %QualityControlVersion{
+          control_mode: "error_count" = control_mode,
+          score_criteria: %ScoreCriteria{error_count: %ScoreCriterias.ErrorCount{} = criteria}
+        },
+        score
+      ) do
+    %{
+      score_content: %ScoreContent{
+        ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
+      }
+    } = score
+
+    message = result_message(validation_count, criteria, control_mode)
+
+    %{
+      result: validation_count,
+      result_message: message,
+      ratio_content: Ratio.to_json(ratio)
+    }
+  end
+
+  def score_content(_quality_control_version, _score), do: %{result_message: nil}
+
+  def get_latest_score(%QualityControlVersion{
+        status: status,
+        final_score: %{id: id}
+      })
+      when is_nil(id) and status in ["published", "deprecated"],
+      do: nil
+
+  def get_latest_score(%QualityControlVersion{
+        status: status,
+        final_score: final_score
+      })
+      when status in ["published", "deprecated"],
+      do: final_score
+
+  def get_latest_score(%QualityControlVersion{latest_score: latest_score}),
+    do: latest_score
+
+  def result_message(nil, _criteria, _type_criteria), do: "no_results"
+
+  def result_message(count, criteria, type_criteria) do
+    cond do
+      meets_goal?(count, criteria, type_criteria) -> "meets_goal"
+      under_goal?(count, criteria, type_criteria) -> "under_goal"
+      true -> "under_threshold"
+    end
+  end
+
+  defp meets_goal?(count, criteria, type_criteria) do
+    (type_criteria in ["count", "deviation"] && count < criteria.goal) or
+      (type_criteria in ["percentage", "error_count"] && count > criteria.goal)
+  end
+
+  defp under_goal?(count, criteria, type_criteria) do
+    (type_criteria in ["count", "deviation"] && count < criteria.maximum) or
+      (type_criteria == "error_count" && count > criteria.maximum) or
+      (type_criteria == "percentage" && count > criteria.minimum)
+  end
+
+  defp calculate_ratio(_validation_count, 0), do: nil
+
+  defp calculate_ratio(validation_count, total_count),
+    do: Float.round(validation_count / total_count * 100, 2)
 
   defp on_events_insert({_n, events}) do
     version_ids =

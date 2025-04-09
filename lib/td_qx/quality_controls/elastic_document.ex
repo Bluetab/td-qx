@@ -7,10 +7,8 @@ defmodule TdQx.QualityControls.ElasticDocument do
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.QualityControls.ScoreCriteria
   alias TdQx.QualityControls.ScoreCriterias
+  alias TdQx.Scores
   alias TdQx.Scores.Score
-  alias TdQx.Scores.ScoreContent
-  alias TdQx.Scores.ScoreContents.Count
-  alias TdQx.Scores.ScoreContents.Ratio
   alias TdQx.Scores.ScoreEvent
 
   defimpl Document, for: QualityControlVersion do
@@ -101,7 +99,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
     defp with_score_criteria(document, _other), do: document
 
     defp with_latest_score(version, %QualityControlVersion{} = qcv) do
-      score = get_score(qcv)
+      score = Scores.get_latest_score(qcv)
 
       with_latest_score(version, qcv, score)
     end
@@ -116,7 +114,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
            %QualityControlVersion{} = quality_control_version,
            %Score{} = score
          ) do
-      score_content_attrs = score_content(quality_control_version, score)
+      score_content_attrs = Scores.score_content(quality_control_version, score)
 
       latest_score =
         Map.merge(
@@ -134,138 +132,6 @@ defmodule TdQx.QualityControls.ElasticDocument do
     defp with_latest_score(version, %QualityControlVersion{}, _) do
       Map.put(version, :latest_score, %{result_message: nil})
     end
-
-    defp score_content(
-           %QualityControlVersion{
-             control_mode: "count" = control_mode,
-             score_criteria: %ScoreCriteria{count: %ScoreCriterias.Count{} = criteria}
-           },
-           score
-         ) do
-      %{
-        score_content: %ScoreContent{
-          count: %Count{count: count} = error
-        }
-      } = score
-
-      message = result_message(count, criteria, control_mode)
-
-      %{
-        result: count,
-        result_message: message,
-        count_content: Count.to_json(error)
-      }
-    end
-
-    defp score_content(
-           %QualityControlVersion{
-             control_mode: "deviation" = control_mode,
-             score_criteria: %ScoreCriteria{deviation: %ScoreCriterias.Deviation{} = criteria}
-           },
-           score
-         ) do
-      %{
-        score_content: %ScoreContent{
-          ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
-        }
-      } = score
-
-      deviation = calculate_ratio(validation_count, total_count)
-      message = result_message(deviation, criteria, control_mode)
-
-      %{
-        result: deviation,
-        result_message: message,
-        ratio_content: Ratio.to_json(ratio)
-      }
-    end
-
-    defp score_content(
-           %QualityControlVersion{
-             control_mode: "percentage" = control_mode,
-             score_criteria: %ScoreCriteria{percentage: %ScoreCriterias.Percentage{} = criteria}
-           },
-           score
-         ) do
-      %{
-        score_content: %ScoreContent{
-          ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
-        }
-      } = score
-
-      percentage = calculate_ratio(validation_count, total_count)
-
-      message = result_message(percentage, criteria, control_mode)
-
-      %{result: percentage, result_message: message, ratio_content: Ratio.to_json(ratio)}
-    end
-
-    defp score_content(
-           %QualityControlVersion{
-             control_mode: "error_count" = control_mode,
-             score_criteria: %ScoreCriteria{error_count: %ScoreCriterias.ErrorCount{} = criteria}
-           },
-           score
-         ) do
-      %{
-        score_content: %ScoreContent{
-          ratio: %Ratio{validation_count: validation_count, total_count: total_count} = ratio
-        }
-      } = score
-
-      error_count = calculate_ratio(validation_count, total_count)
-      message = result_message(error_count, criteria, control_mode)
-
-      %{
-        result: error_count,
-        result_message: message,
-        ratio_content: Ratio.to_json(ratio)
-      }
-    end
-
-    defp score_content(_quality_control_version, _score), do: %{result_message: nil}
-
-    defp get_score(%QualityControlVersion{
-           status: status,
-           final_score: %{id: id}
-         })
-         when is_nil(id) and status in ["published", "deprecated"],
-         do: nil
-
-    defp get_score(%QualityControlVersion{
-           status: status,
-           final_score: final_score
-         })
-         when status in ["published", "deprecated"],
-         do: final_score
-
-    defp get_score(%QualityControlVersion{latest_score: latest_score}),
-      do: latest_score
-
-    defp result_message(nil, _criteria, _type_criteria), do: "no_results"
-
-    defp result_message(count, criteria, type_criteria) do
-      cond do
-        meets_goal?(count, criteria, type_criteria) -> "meets_goal"
-        under_goal?(count, criteria, type_criteria) -> "under_goal"
-        true -> "under_threshold"
-      end
-    end
-
-    defp meets_goal?(count, criteria, type_criteria) do
-      (type_criteria in ["count", "deviation", "error_count"] && count < criteria.goal) or
-        (type_criteria == "percentage" && count > criteria.goal)
-    end
-
-    defp under_goal?(count, criteria, type_criteria) do
-      (type_criteria in ["count", "deviation", "error_count"] && count < criteria.maximum) or
-        (type_criteria == "percentage" && count > criteria.minimum)
-    end
-
-    defp calculate_ratio(_validation_count, 0), do: nil
-
-    defp calculate_ratio(validation_count, total_count),
-      do: Float.round(validation_count / total_count * 100, 2)
   end
 
   defimpl ElasticDocumentProtocol, for: QualityControlVersion do
