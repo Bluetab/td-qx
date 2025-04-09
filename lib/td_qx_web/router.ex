@@ -31,13 +31,16 @@ defmodule TdQxWeb.Router do
 
     resources "/quality_controls", QualityControlController, only: [:show, :delete, :create] do
       get "/queries", QualityControlController, :queries
-      get "/versions", QualityControlController, :index_versions
       get "/published", QualityControlController, :show_published
       post "/draft", QualityControlController, :create_draft
       patch "/draft", QualityControlController, :update_draft
       patch "/status", QualityControlController, :update_status
       patch "/main", QualityControlController, :update_main
       get "/scores", ScoreController, :index_by_quality_control
+
+      resources "/versions", QualityControlVersionController,
+        only: [:show, :index, :delete],
+        param: "version"
     end
 
     scope "/score_groups" do

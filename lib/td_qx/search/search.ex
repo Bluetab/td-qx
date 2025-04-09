@@ -7,7 +7,7 @@ defmodule TdQx.Search do
   alias TdCore.Search.ElasticDocumentProtocol
   alias TdCore.Search.Permissions
   alias TdCore.Search.Query
-  alias TdQx.QualityControls.QualityControl
+  alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Scores.ScoreGroup
 
   @default_page 0
@@ -42,13 +42,13 @@ defmodule TdQx.Search do
     do_search(search, params, :score_groups)
   end
 
-  def filters(%{} = params, claims, index \\ :quality_controls) do
+  def filters(%{} = params, claims, index \\ :quality_control_versions) do
     {query, aggs} = build_query(params, claims, index)
 
     Search.get_filters(%{query: query, aggs: aggs, size: 0}, index)
   end
 
-  defp do_search(search, params, index \\ :quality_controls)
+  defp do_search(search, params, index \\ :quality_control_versions)
 
   defp do_search(%{"scroll_id" => _scroll_id} = search, _params, _index) do
     search
@@ -68,9 +68,13 @@ defmodule TdQx.Search do
     |> transform_response
   end
 
-  defp build_query(params, claims, index \\ :quality_controls)
+  defp build_query(params, claims, index \\ :quality_control_versions)
 
-  defp build_query(%{"must" => %{"for_execution" => [true]}} = params, claims, :quality_controls) do
+  defp build_query(
+         %{"must" => %{"for_execution" => [true]}} = params,
+         claims,
+         :quality_control_versions
+       ) do
     permissions_filter =
       Permissions.filter_for_permissions(
         ["view_quality_controls", "execute_quality_controls"],
@@ -93,7 +97,7 @@ defmodule TdQx.Search do
     {query, aggs}
   end
 
-  defp build_query(params, claims, :quality_controls) do
+  defp build_query(params, claims, :quality_control_versions) do
     permissions_filter = Permissions.filter_for_permissions(["view_quality_controls"], claims)
 
     query_data = %{aggs: aggs} = fetch_query_data()
@@ -130,7 +134,7 @@ defmodule TdQx.Search do
     %{results: new_results, total: total}
   end
 
-  defp fetch_query_data(schema \\ %QualityControl{})
+  defp fetch_query_data(schema \\ %QualityControlVersion{})
 
   defp fetch_query_data(schema) do
     schema

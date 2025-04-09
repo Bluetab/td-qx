@@ -123,9 +123,9 @@ config :td_core, TdCore.Search.Cluster,
 
 config :td_core, TdCore.Search.Cluster,
   indexes: [
-    quality_controls: [
+    quality_control_versions: [
       bulk_page_size:
-        System.get_env("BULK_PAGE_SIZE_QUALITY_CONTROLS", "5000") |> String.to_integer()
+        System.get_env("BULK_PAGE_SIZE_QUALITY_CONTROL_VERSIONS", "5000") |> String.to_integer()
     ],
     score_groups: [
       bulk_page_size: System.get_env("BULK_PAGE_SIZE_SCORE_GROUPS", "5000") |> String.to_integer()

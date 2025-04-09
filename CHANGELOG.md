@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.4.0] 2025-04-09
+
+### Changed
+
+- License and libraries
+
+### Added
+
+- [TD-7094]
+  - Access and delete quality control version
+  - Indexing quality control versions with latest score
+
 ## [7.3.0] 2025-03-18
 
 ### Added
