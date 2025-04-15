@@ -25,6 +25,22 @@ config :td_cluster, groups: [:qx]
 if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  get_ssl_option = fn env_var, option_key ->
+    if System.get_env("DB_SSL", "") |> String.downcase() == "true" do
+      case System.get_env(env_var, "") do
+        "" -> []
+        "nil" -> []
+        value -> [{option_key, value}]
+      end
+    else
+      []
+    end
+  end
+
+  optional_db_ssl_options_cacertfile = get_ssl_option.("DB_SSL_CACERTFILE", :cacertfile)
+  optional_db_ssl_options_certfile = get_ssl_option.("DB_SSL_CLIENT_CERT", :certfile)
+  optional_db_ssl_options_keyfile = get_ssl_option.("DB_SSL_CLIENT_KEY", :keyfile)
+
   config :td_qx, TdQx.Repo,
     username: System.fetch_env!("DB_USER"),
     password: System.fetch_env!("DB_PASSWORD"),
@@ -34,17 +50,18 @@ if config_env() == :prod do
     pool_size: System.get_env("DB_POOL_SIZE", "4") |> String.to_integer(),
     timeout: System.get_env("DB_TIMEOUT_MILLIS", "15000") |> String.to_integer(),
     ssl: System.get_env("DB_SSL", "") |> String.downcase() == "true",
-    ssl_opts: [
-      cacertfile: System.get_env("DB_SSL_CACERTFILE", ""),
-      verify:
-        System.get_env("DB_SSL_VERIFY", "verify_none") |> String.downcase() |> String.to_atom(),
-      server_name_indication: System.get_env("DB_HOST") |> to_charlist(),
-      certfile: System.get_env("DB_SSL_CLIENT_CERT", ""),
-      keyfile: System.get_env("DB_SSL_CLIENT_KEY", ""),
-      versions: [
-        System.get_env("DB_SSL_VERSION", "tlsv1.2") |> String.downcase() |> String.to_atom()
-      ]
-    ],
+    ssl_opts:
+      [
+        verify:
+          System.get_env("DB_SSL_VERIFY", "verify_none") |> String.downcase() |> String.to_atom(),
+        server_name_indication: System.get_env("DB_HOST") |> to_charlist(),
+        versions: [
+          System.get_env("DB_SSL_VERSION", "tlsv1.2") |> String.downcase() |> String.to_atom()
+        ]
+      ] ++
+        optional_db_ssl_options_cacertfile ++
+        optional_db_ssl_options_certfile ++
+        optional_db_ssl_options_keyfile,
     socket_options: maybe_ipv6
 
   config :td_core, TdCore.Auth.Guardian, secret_key: System.fetch_env!("GUARDIAN_SECRET_KEY")
