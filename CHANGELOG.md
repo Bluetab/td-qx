@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- [TD-7226] Enhance SSL configuration handling in production
+
+## [7.4.0] 2025-04-09
+
+### Changed
+
+- License and libraries
+
 ### Added
 
 - [TD-7094]
