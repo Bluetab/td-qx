@@ -19,8 +19,8 @@ defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
     goal = get_field(changeset, :goal)
 
     changeset
-    |> validate_number(:goal, greater_than_or_equal_to: 0)
-    |> validate_number(:maximum, greater_than_or_equal_to: goal)
+    |> validate_number(:goal, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
+    |> validate_number(:maximum, greater_than_or_equal_to: goal, less_than_or_equal_to: 100)
     |> validate_required([:goal, :maximum])
   end
 

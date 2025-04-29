@@ -9,6 +9,7 @@ defmodule TdQx.Scores do
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.QualityControls.ScoreCriteria
   alias TdQx.QualityControls.ScoreCriterias
+  alias TdQx.Repo
   alias TdQx.Scores.Score
   alias TdQx.Scores.ScoreContent
   alias TdQx.Scores.ScoreContents.Count
@@ -16,7 +17,6 @@ defmodule TdQx.Scores do
   alias TdQx.Scores.ScoreEvent
   alias TdQx.Scores.ScoreGroup
   alias TdQx.Search.Indexer
-  alias TdQx.Repo
 
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
@@ -410,10 +410,11 @@ defmodule TdQx.Scores do
       }
     } = score
 
-    message = result_message(validation_count, criteria, control_mode)
+    percentage = calculate_ratio(validation_count, total_count)
+    message = result_message(percentage, criteria, control_mode)
 
     %{
-      result: validation_count,
+      result: percentage,
       result_message: message,
       ratio_content: Ratio.to_json(ratio)
     }
@@ -449,13 +450,12 @@ defmodule TdQx.Scores do
   end
 
   defp meets_goal?(count, criteria, type_criteria) do
-    (type_criteria in ["count", "deviation"] && count < criteria.goal) or
-      (type_criteria in ["percentage", "error_count"] && count > criteria.goal)
+    (type_criteria in ["count", "deviation", "error_count"] && count < criteria.goal) or
+      (type_criteria in ["percentage"] && count > criteria.goal)
   end
 
   defp under_goal?(count, criteria, type_criteria) do
-    (type_criteria in ["count", "deviation"] && count < criteria.maximum) or
-      (type_criteria == "error_count" && count > criteria.maximum) or
+    (type_criteria in ["count", "deviation", "error_count"] && count < criteria.maximum) or
       (type_criteria == "percentage" && count > criteria.minimum)
   end
 
