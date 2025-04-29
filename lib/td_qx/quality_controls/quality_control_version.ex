@@ -38,16 +38,14 @@ defmodule TdQx.QualityControls.QualityControlVersion do
     {"deprecated", "restore"}
   ]
 
-  @valid_control_modes ["deviation", "percentage", "error_count"]
+  @valid_control_modes ["deviation", "percentage", "count", "error_count"]
 
   schema "quality_control_versions" do
     field :name, :string
     field :status, :string, default: "draft"
     field :version, :integer, default: 1
-
     field :dynamic_content, :map
     field :df_type, :string
-
     field :control_mode, :string
 
     belongs_to :quality_control, QualityControl
