@@ -7,12 +7,12 @@ defmodule TdQx.QualityControls.ControlProperties do
 
   import Ecto.Changeset
 
-  alias TdQx.QualityControls.ControlProperties.ErrorCount
+  alias TdQx.QualityControls.ControlProperties.Count
   alias TdQx.QualityControls.ControlProperties.Ratio
 
   @primary_key false
   embedded_schema do
-    embeds_one(:error_count, ErrorCount, on_replace: :delete)
+    embeds_one(:count, Count, on_replace: :delete)
     embeds_one(:ratio, Ratio, on_replace: :delete)
   end
 
@@ -25,21 +25,23 @@ defmodule TdQx.QualityControls.ControlProperties do
     |> cast_control_properties_embed(prop_type)
   end
 
-  def to_json(%__MODULE__{error_count: %ErrorCount{} = error_count}),
-    do: ErrorCount.to_json(error_count)
+  def to_json(%__MODULE__{count: %Count{} = count}),
+    do: Count.to_json(count)
 
   def to_json(%__MODULE__{ratio: %Ratio{} = ratio}),
     do: Ratio.to_json(ratio)
 
   def to_json(_), do: nil
 
-  defp control_mode_to_properties("error_count"), do: "error_count"
-  defp control_mode_to_properties("deviation"), do: "ratio"
-  defp control_mode_to_properties("percentage"), do: "ratio"
+  defp control_mode_to_properties("count"), do: "count"
+
+  defp control_mode_to_properties(type) when type in ["deviation", "error_count", "percentage"],
+    do: "ratio"
+
   defp control_mode_to_properties(_), do: "invalid"
 
-  defp cast_control_properties_embed(changeset, "error_count"),
-    do: cast_embed(changeset, :error_count, with: &ErrorCount.changeset/2)
+  defp cast_control_properties_embed(changeset, "count"),
+    do: cast_embed(changeset, :count, with: &Count.changeset/2)
 
   defp cast_control_properties_embed(changeset, "ratio"),
     do: cast_embed(changeset, :ratio, with: &Ratio.changeset/2)
@@ -48,12 +50,12 @@ defmodule TdQx.QualityControls.ControlProperties do
     do: add_error(changeset, :control_mode, "invalid")
 
   def enrich_resources(
-        %__MODULE__{error_count: %ErrorCount{} = error_count} = control_properties,
+        %__MODULE__{count: %Count{} = count} = control_properties,
         enrich_fun
       ),
       do: %{
         control_properties
-        | error_count: ErrorCount.enrich_resources(error_count, enrich_fun)
+        | count: Count.enrich_resources(count, enrich_fun)
       }
 
   def enrich_resources(%__MODULE__{ratio: %Ratio{} = ratio} = control_properties, enrich_fun),

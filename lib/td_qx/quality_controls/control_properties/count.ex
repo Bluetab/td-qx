@@ -1,6 +1,6 @@
-defmodule TdQx.QualityControls.ControlProperties.ErrorCount do
+defmodule TdQx.QualityControls.ControlProperties.Count do
   @moduledoc """
-  Ecto Schema module for QualityControl ControlProperties ErrorCount
+  Ecto Schema module for QualityControl ControlProperties Count
   """
 
   use Ecto.Schema
@@ -13,9 +13,9 @@ defmodule TdQx.QualityControls.ControlProperties.ErrorCount do
     embeds_one(:errors_resource, Resource, on_replace: :delete)
   end
 
-  def to_json(%__MODULE__{} = error_count) do
+  def to_json(%__MODULE__{} = count) do
     %{
-      errors_resource: Resource.to_json(error_count.errors_resource)
+      errors_resource: Resource.to_json(count.errors_resource)
     }
   end
 
@@ -27,7 +27,7 @@ defmodule TdQx.QualityControls.ControlProperties.ErrorCount do
     |> cast_embed(:errors_resource, with: &Resource.changeset/2, required: true)
   end
 
-  def enrich_resources(%__MODULE__{} = error_count, enrich_fun) do
-    %{error_count | errors_resource: enrich_fun.(error_count.errors_resource)}
+  def enrich_resources(%__MODULE__{} = count, enrich_fun) do
+    %{count | errors_resource: enrich_fun.(count.errors_resource)}
   end
 end

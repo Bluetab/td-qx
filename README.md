@@ -42,7 +42,9 @@ guides](http://www.phoenixframework.org/docs/deployment).
 
 ### Elastic bulk page size configuration
 
--BULK_PAGE_SIZE_QUALITY_CONTROL_VERSIONS: default 5000
+ -BULK_PAGE_SIZE_QUALITY_CONTROLS: default 5000
+ -BULK_PAGE_SIZE_SCORE_GROUPS: default 5000
+ -BULK_PAGE_SIZE_QUALITY_CONTROL_VERSIONS: default 5000
 
 ### Elastic aggregations
 

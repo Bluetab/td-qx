@@ -446,16 +446,16 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def control_properties_factory(%{error_count: %{} = error_count}),
-    do: %ControlProperties{error_count: error_count}
+  def control_properties_factory(%{count: %{} = count}),
+    do: %ControlProperties{count: count}
 
   def control_properties_factory(%{ratio: %{} = ratio}),
     do: %ControlProperties{ratio: ratio}
 
   def control_properties_factory(_), do: %ControlProperties{ratio: build(:cp_ratio)}
 
-  def cp_error_count_factory(attrs) do
-    %ControlProperties.ErrorCount{
+  def cp_count_factory(attrs) do
+    %ControlProperties.Count{
       errors_resource: build(:resource)
     }
     |> merge_attributes(attrs)
@@ -480,11 +480,14 @@ defmodule TdQx.Factory do
   def score_criteria_factory(%{deviation: %{} = deviation}),
     do: %ScoreCriteria{deviation: deviation}
 
-  def score_criteria_factory(%{error_count: %{} = error_count}),
-    do: %ScoreCriteria{error_count: error_count}
+  def score_criteria_factory(%{count: %{} = count}),
+    do: %ScoreCriteria{count: count}
 
   def score_criteria_factory(%{percentage: %{} = percentage}),
     do: %ScoreCriteria{percentage: percentage}
+
+  def score_criteria_factory(%{error_count: %{} = error_count}),
+    do: %ScoreCriteria{error_count: error_count}
 
   def score_criteria_factory(_), do: %ScoreCriteria{percentage: build(:sc_percentage)}
 
@@ -496,8 +499,8 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def sc_error_count_factory(attrs) do
-    %ScoreCriterias.ErrorCount{
+  def sc_count_factory(attrs) do
+    %ScoreCriterias.Count{
       goal: 10,
       maximum: 100
     }
@@ -508,6 +511,14 @@ defmodule TdQx.Factory do
     %ScoreCriterias.Percentage{
       goal: 90.0,
       minimum: 75.0
+    }
+    |> merge_attributes(attrs)
+  end
+
+  def sc_error_count_factory(attrs) do
+    %ScoreCriterias.ErrorCount{
+      goal: 5.0,
+      maximum: 15.0
     }
     |> merge_attributes(attrs)
   end
@@ -535,8 +546,8 @@ defmodule TdQx.Factory do
   def score_content_factory(%{ratio: %{} = ratio}),
     do: %ScoreContent{ratio: ratio}
 
-  def score_content_factory(%{error_count: %{} = error_count}),
-    do: %ScoreContent{error_count: error_count}
+  def score_content_factory(%{count: %{} = count}),
+    do: %ScoreContent{count: count}
 
   def score_content_factory(_), do: %ScoreContent{ratio: build(:score_content_ratio_factory)}
 
@@ -548,9 +559,9 @@ defmodule TdQx.Factory do
     |> merge_attributes(attrs)
   end
 
-  def score_content_error_count_factory(attrs) do
-    %ScoreContents.ErrorCount{
-      error_count: 100
+  def score_content_count_factory(attrs) do
+    %ScoreContents.Count{
+      count: 100
     }
     |> merge_attributes(attrs)
   end
