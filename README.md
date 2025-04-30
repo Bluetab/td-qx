@@ -31,9 +31,20 @@ guides](http://www.phoenixframework.org/docs/deployment).
 
 ## Environment variables
 
+### SSL conection
+
+- DB_SSL: boolean value, to enable TSL config, by default is false.
+- DB_SSL_CACERTFILE: path of the certification authority cert file "/path/to/ca.crt".
+- DB_SSL_VERSION: available versions are tlsv1.2, tlsv1.3 by default is tlsv1.2.
+- DB_SSL_CLIENT_CERT: Path to the client SSL certificate file.
+- DB_SSL_CLIENT_KEY: Path to the client SSL private key file.
+- DB_SSL_VERIFY: This option specifies whether certificates are to be verified.
+
 ### Elastic bulk page size configuration
 
--BULK_PAGE_SIZE_QUALITY_CONTROL_VERSIONS: default 5000
+ -BULK_PAGE_SIZE_QUALITY_CONTROLS: default 5000
+ -BULK_PAGE_SIZE_SCORE_GROUPS: default 5000
+ -BULK_PAGE_SIZE_QUALITY_CONTROL_VERSIONS: default 5000
 
 ### Elastic aggregations
 

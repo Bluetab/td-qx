@@ -246,8 +246,7 @@ defmodule TdQx.QualityControlsTest do
     test "create_quality_control_version/1 handles invalid error_count score_criteria" do
       quality_control = insert(:quality_control)
 
-      attrs =
-        params_for(:quality_control_version_params_for, control_mode: "error_count")
+      attrs = params_for(:quality_control_version_params_for, control_mode: "error_count")
 
       # Goal < 0
       attrs = Map.put(attrs, :score_criteria, %{goal: -1})
@@ -259,13 +258,60 @@ defmodule TdQx.QualityControlsTest do
 
       assert %{goal: ["must be greater than or equal to 0"]} = error
 
+      # Goal > 100
+      attrs = Map.put(attrs, :score_criteria, %{goal: 101})
+
+      assert {:error, changeset} =
+               QualityControls.create_quality_control_version(quality_control, attrs)
+
+      %{score_criteria: %{error_count: error}} = errors_on(changeset)
+
+      assert %{goal: ["must be less than or equal to 100"]} = error
+
+      # Maximum > 100
+      attrs = Map.put(attrs, :score_criteria, %{goal: 90, maximum: 101})
+
+      assert {:error, changeset} =
+               QualityControls.create_quality_control_version(quality_control, attrs)
+
+      %{score_criteria: %{error_count: error}} = errors_on(changeset)
+
+      assert %{maximum: ["must be less than or equal to 100"]} = error
+
+      # Maximum < Goal
+      attrs = Map.put(attrs, :score_criteria, %{goal: 50, maximum: 25})
+
+      assert {:error, changeset} =
+               QualityControls.create_quality_control_version(quality_control, attrs)
+
+      %{score_criteria: %{error_count: error}} = errors_on(changeset)
+
+      assert %{maximum: ["must be greater than or equal to 50.0"]} = error
+    end
+
+    test "create_quality_control_version/1 handles invalid count score_criteria" do
+      quality_control = insert(:quality_control)
+
+      attrs =
+        params_for(:quality_control_version_params_for, control_mode: "count")
+
+      # Goal < 0
+      attrs = Map.put(attrs, :score_criteria, %{goal: -1})
+
+      assert {:error, changeset} =
+               QualityControls.create_quality_control_version(quality_control, attrs)
+
+      %{score_criteria: %{count: error}} = errors_on(changeset)
+
+      assert %{goal: ["must be greater than or equal to 0"]} = error
+
       # Maximum < Goal
       attrs = Map.put(attrs, :score_criteria, %{goal: 50, maximum: 10})
 
       assert {:error, changeset} =
                QualityControls.create_quality_control_version(quality_control, attrs)
 
-      %{score_criteria: %{error_count: error}} = errors_on(changeset)
+      %{score_criteria: %{count: error}} = errors_on(changeset)
 
       assert %{maximum: ["must be greater than or equal to 50"]} = error
     end

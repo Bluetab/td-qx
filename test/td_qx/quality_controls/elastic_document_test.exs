@@ -72,7 +72,7 @@ defmodule TdQx.QualityControls.ElasticDocumentTest do
       end
 
       @tag status: status
-      test "encodes content with latest score with an error count qcv #{status}", %{
+      test "encodes content with latest score with a count qcv #{status}", %{
         status: status
       } do
         template_name = "df_type"
@@ -83,15 +83,15 @@ defmodule TdQx.QualityControls.ElasticDocumentTest do
             df_type: template_name,
             dynamic_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
             quality_control: insert(:quality_control),
-            control_mode: "error_count",
-            score_criteria: build(:score_criteria, error_count: build(:sc_error_count))
+            control_mode: "count",
+            score_criteria: build(:score_criteria, count: build(:sc_count))
           )
 
         score_content =
-          build(:score_content, error_count: build(:score_content_error_count))
+          build(:score_content, count: build(:score_content_count))
 
         {score_base, latest_score, final_score} =
-          get_scores_by_status(status, quality_control_version, score_content, "error_count")
+          get_scores_by_status(status, quality_control_version, score_content, "count")
 
         quality_control_version =
           quality_control_version
@@ -104,7 +104,7 @@ defmodule TdQx.QualityControls.ElasticDocumentTest do
         assert document.latest_score == %{
                  status: "succeeded",
                  executed_at: score_base.execution_timestamp,
-                 error_count_content: %{error_count: 100},
+                 count_content: %{count: 100},
                  result_message: "under_threshold",
                  type: score_base.score_type,
                  result: 100
@@ -133,6 +133,47 @@ defmodule TdQx.QualityControls.ElasticDocumentTest do
 
         {score_base, latest_score, final_score} =
           get_scores_by_status(status, quality_control_version, score_content, "deviation")
+
+        quality_control_version =
+          quality_control_version
+          |> Map.put(:template, @template)
+          |> Map.put(:latest_score, latest_score)
+          |> Map.put(:final_score, final_score)
+
+        document = Document.encode(quality_control_version)
+
+        assert document.latest_score == %{
+                 status: "succeeded",
+                 executed_at: score_base.execution_timestamp,
+                 ratio_content: %{total_count: 10, validation_count: 1},
+                 result_message: "under_goal",
+                 type: score_base.score_type,
+                 result: 10.0
+               }
+
+        assert document.score_criteria == %{maximum: 15.0, goal: 5.0}
+      end
+
+      @tag status: status
+      test "encodes content with latest score with ratio - error_count qcv #{status}", %{
+        status: status
+      } do
+        template_name = "df_type"
+
+        quality_control_version =
+          insert(:quality_control_version,
+            status: status,
+            df_type: template_name,
+            dynamic_content: %{"foo" => %{"value" => "bar", "origin" => "user"}},
+            quality_control: insert(:quality_control),
+            control_mode: "error_count",
+            score_criteria: build(:score_criteria, error_count: build(:sc_error_count))
+          )
+
+        score_content = build(:score_content, ratio: build(:score_content_ratio))
+
+        {score_base, latest_score, final_score} =
+          get_scores_by_status(status, quality_control_version, score_content, "error_count")
 
         quality_control_version =
           quality_control_version

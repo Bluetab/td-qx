@@ -41,8 +41,8 @@ defmodule TdQx.QualityControlTransformer do
   end
 
   def queries_from(%TdQx.QualityControls.QualityControlVersion{
-        control_mode: "error_count",
-        control_properties: %{error_count: %{errors_resource: resource}}
+        control_mode: "count",
+        control_properties: %{count: %{errors_resource: resource}}
       }) do
     from = %Queryable{
       type: "from",
@@ -54,7 +54,7 @@ defmodule TdQx.QualityControlTransformer do
 
     [
       %{
-        query_ref: "error_count",
+        query_ref: "count",
         __type__: "query",
         resource: DataView.unfold(%DataView{queryables: [from]}),
         action: "count"
@@ -66,7 +66,7 @@ defmodule TdQx.QualityControlTransformer do
         control_mode: mode,
         control_properties: %{ratio: %{resource: resource, validation: clauses}}
       })
-      when mode in ["deviation", "percentage"] do
+      when mode in ["deviation", "percentage", "error_count"] do
     from = %Queryable{
       type: "from",
       id: 0,

@@ -9,8 +9,8 @@ defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
 
   @primary_key false
   embedded_schema do
-    field :goal, :integer
-    field :maximum, :integer
+    field(:goal, :float)
+    field(:maximum, :float)
   end
 
   def changeset(%__MODULE__{} = struct, %{} = params) do
@@ -18,10 +18,9 @@ defmodule TdQx.QualityControls.ScoreCriterias.ErrorCount do
 
     goal = get_field(changeset, :goal)
 
-    struct
-    |> cast(params, [:goal, :maximum])
-    |> validate_number(:goal, greater_than_or_equal_to: 0)
-    |> validate_number(:maximum, greater_than_or_equal_to: goal)
+    changeset
+    |> validate_number(:goal, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
+    |> validate_number(:maximum, greater_than_or_equal_to: goal, less_than_or_equal_to: 100)
     |> validate_required([:goal, :maximum])
   end
 

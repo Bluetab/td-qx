@@ -321,17 +321,17 @@ defmodule TdQxWeb.ScoreControllerTest do
     end
 
     @tag authentication: [role: "service"]
-    test "embeds the quality_control query for error_count", %{conn: conn} do
+    test "embeds the quality_control query for count", %{conn: conn} do
       %{quality_control: %{source_id: source_id}} =
         qcv =
         insert(:quality_control_version,
           status: "published",
           quality_control: insert(:quality_control),
-          control_mode: "error_count",
+          control_mode: "count",
           control_properties:
             build(:control_properties,
-              error_count:
-                build(:cp_error_count,
+              count:
+                build(:cp_count,
                   errors_resource: build(:resource, type: "data_structure", id: 888)
                 )
             )
@@ -360,7 +360,7 @@ defmodule TdQxWeb.ScoreControllerTest do
             %{
               "__type__" => "query",
               "action" => "count",
-              "query_ref" => "error_count",
+              "query_ref" => "count",
               "resource" => %{
                 "__type__" => "data_view",
                 "queryables" => [%{"__type__" => "from", "resource" => nil, "resource_ref" => 0}],

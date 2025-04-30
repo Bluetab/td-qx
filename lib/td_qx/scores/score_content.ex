@@ -7,12 +7,12 @@ defmodule TdQx.Scores.ScoreContent do
 
   import Ecto.Changeset
 
-  alias TdQx.Scores.ScoreContents.ErrorCount
+  alias TdQx.Scores.ScoreContents.Count
   alias TdQx.Scores.ScoreContents.Ratio
 
   @primary_key false
   embedded_schema do
-    embeds_one(:error_count, ErrorCount, on_replace: :delete)
+    embeds_one(:count, Count, on_replace: :delete)
     embeds_one(:ratio, Ratio, on_replace: :delete)
   end
 
@@ -24,8 +24,8 @@ defmodule TdQx.Scores.ScoreContent do
     |> cast_score_content_embed(type)
   end
 
-  def to_json(%__MODULE__{error_count: %ErrorCount{} = error_count}),
-    do: ErrorCount.to_json(error_count)
+  def to_json(%__MODULE__{count: %Count{} = count}),
+    do: Count.to_json(count)
 
   def to_json(%__MODULE__{ratio: %Ratio{} = ratio}),
     do: Ratio.to_json(ratio)
@@ -48,9 +48,9 @@ defmodule TdQx.Scores.ScoreContent do
          "validation_count" => validation_count
        }
 
-  defp parse_result(%{"error_count" => [[error_count]]}, "error_count"),
+  defp parse_result(%{"count" => [[count]]}, "count"),
     do: %{
-      "error_count" => error_count
+      "count" => count
     }
 
   defp parse_result(_, _), do: nil
@@ -58,8 +58,8 @@ defmodule TdQx.Scores.ScoreContent do
   defp cast_score_content_embed(changeset, "ratio"),
     do: cast_embed(changeset, :ratio, with: &Ratio.changeset/2)
 
-  defp cast_score_content_embed(changeset, "error_count"),
-    do: cast_embed(changeset, :error_count, with: &ErrorCount.changeset/2)
+  defp cast_score_content_embed(changeset, "count"),
+    do: cast_embed(changeset, :count, with: &Count.changeset/2)
 
   defp cast_score_content_embed(changeset, _),
     do: add_error(changeset, :score_type, "invalid")
