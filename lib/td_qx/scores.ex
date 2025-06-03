@@ -17,7 +17,6 @@ defmodule TdQx.Scores do
   alias TdQx.Scores.ScoreEvent
   alias TdQx.Scores.ScoreGroup
   alias TdQx.Search.Indexer
-
   defdelegate authorize(action, user, params), to: __MODULE__.Policy
 
   def score_groups_query(opts) do
@@ -74,7 +73,7 @@ defmodule TdQx.Scores do
   def get_score_group(score_group_id, opts \\ []) do
     opts
     |> Keyword.put(:id, score_group_id)
-    |> score_groups_query
+    |> score_groups_query()
     |> Repo.one()
   end
 
@@ -147,6 +146,9 @@ defmodule TdQx.Scores do
         |> score_with_status_query()
         |> where([latest_event: le], le.type == ^status)
 
+      {:statuses, statuses}, q ->
+        where(q, [latest_event: le], le.type in ^statuses)
+
       {:sources, source_ids}, q ->
         q
         |> ensure_join_qcv()
@@ -185,12 +187,79 @@ defmodule TdQx.Scores do
     |> Repo.all()
   end
 
+  def search_scores(params, []), do: search_scores(params, :status)
+
+  def search_scores(params, preload) do
+    with {quality_control_id, params} <- Map.pop(params, "quality_control_id"),
+         search_params <- scores_paginated_search_filters(params),
+         {:ok,
+          {scores,
+           %Flop.Meta{
+             current_page: current_page,
+             total_count: total_count,
+             total_pages: total_pages,
+             page_size: page_size
+           }}} <-
+           Flop.validate_and_run(
+             scores_query(
+               quality_control_id: quality_control_id,
+               preload: preload
+             ),
+             search_params,
+             for: Score
+           ) do
+      {:ok,
+       %{
+         scores: scores,
+         current_page: current_page,
+         total_count: total_count,
+         total_pages: total_pages,
+         page_size: page_size
+       }}
+    else
+      error -> error
+    end
+  end
+
   def get_score(score_id, opts \\ []) do
     opts
     |> Keyword.put(:id, score_id)
     |> scores_query
     |> Repo.one()
   end
+
+  defp scores_paginated_search_filters(params) do
+    Enum.reduce(
+      params,
+      %{
+        order_by: ["id"],
+        order_directions: ["desc"],
+        page_size: 20,
+        filters: [],
+        page: 1
+      },
+      &apply_query_param/2
+    )
+  end
+
+  defp apply_query_param({"since", since}, %{filters: filters} = acc)
+       when is_binary(since) and since != "",
+       do: %{acc | filters: [%{field: :updated_at, op: :>=, value: since} | filters]}
+
+  defp apply_query_param({"page_size", size}, acc) when is_integer(size) and size > 0,
+    do: %{acc | page_size: size}
+
+  defp apply_query_param({"filters", filters}, acc),
+    do: %{acc | filters: filters}
+
+  defp apply_query_param({"page", page}, acc),
+    do: %{acc | page: page}
+
+  defp apply_query_param({"scroll_id", scroll_id}, acc)
+       when is_binary(scroll_id) and scroll_id != "",
+       do: %{acc | after: scroll_id}
+
+  defp apply_query_param(_, acc), do: acc
 
   defp score_preload_query(preload, query \\ Score)
 
@@ -199,18 +268,23 @@ defmodule TdQx.Scores do
 
   defp score_preload_query(preload, query) when is_list(preload) do
     Enum.reduce(preload, query, fn
+      {:status, status}, q -> score_with_status_query(q, status)
       :status, q -> score_with_status_query(q)
       preload, q -> preload(q, [^preload])
     end)
   end
 
-  defp score_with_status_query(query) do
+  defp score_with_status_query(query),
+    do: score_with_status_query(query, ScoreEvent.valid_types() -- ["INFO", "WARNING"])
+
+  defp score_with_status_query(query, status) do
     latest_events =
       from(e in ScoreEvent,
-        where: e.type not in ["INFO", "WARNING"],
+        where: e.type in ^status,
         select: %{
           score_id: e.score_id,
           type: e.type,
+          message: e.message,
           rn:
             row_number()
             |> over(partition_by: e.score_id, order_by: [desc: e.inserted_at])
@@ -221,7 +295,7 @@ defmodule TdQx.Scores do
 
     query
     |> join(:inner, [s], le in ^latest_events, on: s.id == le.score_id, as: :latest_event)
-    |> select_merge([latest_event: le], %{status: le.type})
+    |> select_merge([latest_event: le], %{status: le.type, latest_event_message: le.message})
   end
 
   def update_scores_quality_control_properties(opts \\ []) do
@@ -298,10 +372,26 @@ defmodule TdQx.Scores do
   end
 
   def delete_score(%Score{} = score) do
-    score
-    |> Repo.delete()
-    |> tap(&on_upserted_score/1)
+    Multi.new()
+    |> Multi.delete(:delete_score, score)
+    |> maybe_delete_score_group(score)
+    |> Repo.transaction()
+    |> on_deleted_score_group()
   end
+
+  def maybe_delete_score_group(multi, %Score{group_id: group_id, id: score_id}) do
+    %{scores: scores} = score_group = get_score_group(group_id, preload: :scores)
+
+    case scores do
+      [%{id: ^score_id}] ->
+        Multi.delete(multi, :delete_score_group, score_group)
+
+      _ ->
+        Multi.run(multi, :delete_score_group, fn _repo, _changes -> {:ok, nil} end)
+    end
+  end
+
+  def maybe_delete_score_group(result), do: result
 
   def insert_event_for_scores(scores, event_params) do
     utc_now = DateTime.utc_now()
@@ -436,6 +526,10 @@ defmodule TdQx.Scores do
       when status in ["published", "deprecated"],
       do: final_score
 
+  def get_latest_score(%QualityControlVersion{status: status, latest_score: nil})
+      when status not in ["published", "deprecated"],
+      do: %{}
+
   def get_latest_score(%QualityControlVersion{latest_score: latest_score}),
     do: latest_score
 
@@ -493,9 +587,37 @@ defmodule TdQx.Scores do
 
   defp on_event_insert(_error, _reindex), do: :noop
 
-  defp on_upserted_score({:ok, %Score{quality_control_version_id: quality_control_version_id}}) do
+  defp on_upserted_score(
+         {:ok, %Score{quality_control_version_id: quality_control_version_id}} =
+           result
+       ) do
     Indexer.reindex(ids: quality_control_version_id)
+    result
   end
 
-  defp on_upserted_score(_error), do: :noop
+  defp on_upserted_score(error), do: error
+
+  defp on_deleted_score_group(
+         {:ok,
+          %{
+            delete_score: %Score{group_id: score_group_id} = score,
+            delete_score_group: nil
+          }}
+       ) do
+    Indexer.reindex([id: score_group_id], :score_groups)
+    on_upserted_score({:ok, score})
+  end
+
+  defp on_deleted_score_group(
+         {:ok,
+          %{
+            delete_score: %Score{} = score,
+            delete_score_group: %ScoreGroup{id: score_group_id}
+          }}
+       ) do
+    Indexer.delete([score_group_id], :score_groups)
+    on_upserted_score({:ok, score})
+  end
+
+  defp on_deleted_score_group(error), do: error
 end

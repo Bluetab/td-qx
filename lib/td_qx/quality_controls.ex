@@ -61,6 +61,30 @@ defmodule TdQx.QualityControls do
     Repo.get(QualityControl, id)
   end
 
+  def get_quality_control_with_latest_result(%{id: quality_control_id}) do
+    [quality_control_id: quality_control_id, preload: :status, statuses: ["FAILED", "SUCCEEDED"]]
+    |> Scores.list_scores()
+    |> case do
+      [] ->
+        %{}
+
+      result ->
+        result
+        |> Enum.max_by(& &1.execution_timestamp)
+        |> Map.take([
+          :id,
+          :group_id,
+          :quality_control_version_id,
+          :latest_event_message,
+          :execution_timestamp,
+          :type,
+          :details,
+          :status
+        ])
+    end
+    |> then(&{:last_execution_result, &1})
+  end
+
   @doc """
   Gets a single quality_control.
 
@@ -193,7 +217,7 @@ defmodule TdQx.QualityControls do
         desc: se.inserted_at
       )
       |> limit(1)
-      |> select([_qcv, s, se], %Score{s | type: se.type})
+      |> select([_qcv, s, se], %Score{s | type: se.type, status: se.type, message: se.message})
 
     params
     |> quality_control_versions_filters()

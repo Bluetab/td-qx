@@ -10,12 +10,35 @@ defmodule TdQx.Scores.Score do
   alias TdQx.Scores.ScoreEvent
   alias TdQx.Scores.ScoreGroup
 
+  @derive {Flop.Schema,
+           adapter_opts: [
+             join_fields: [
+               quality_control_id: [
+                 binding: :quality_control_version,
+                 field: :id,
+                 path: [:quality_control_version, :quality_control],
+                 ecto_type: :integer
+               ]
+             ]
+           ],
+           filterable: [:quality_control_id],
+           sortable: [
+             :id,
+             :execution_timestamp,
+             :status,
+             :result,
+             :quality_control_status
+           ],
+           default_limit: 20}
+
   schema "scores" do
     field :execution_timestamp, :utc_datetime_usec
     field :details, :map, default: %{}
+    field :latest_event_message, :string, virtual: true
+
     field :score_type, :string
     field :quality_control_status, :string
-    embeds_one(:score_content, ScoreContent, on_replace: :delete)
+    embeds_one :score_content, ScoreContent, on_replace: :delete
 
     belongs_to :quality_control_version, QualityControlVersion
     belongs_to :group, ScoreGroup
@@ -24,7 +47,7 @@ defmodule TdQx.Scores.Score do
 
     field :status, :string, virtual: true
     field :result, :map, virtual: true
-    timestamps(type: :utc_datetime_usec)
+    timestamps type: :utc_datetime_usec
   end
 
   @doc false
