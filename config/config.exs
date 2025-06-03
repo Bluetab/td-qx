@@ -10,6 +10,7 @@ import Config
 config :td_qx, :env, Mix.env()
 config :td_cluster, :env, Mix.env()
 config :td_core, :env, Mix.env()
+config :flop, repo: TdQx.Repo
 
 config :td_qx,
   ecto_repos: [TdQx.Repo]

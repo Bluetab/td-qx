@@ -10,6 +10,21 @@ defmodule TdQxWeb.ScoreJSON do
   @doc """
   Renders a list of scores.
   """
+  def index(%{search: %{scores: scores_with_pag, last_execution_result: last_execution_result}}) do
+    %{scores: scores} = scores_with_pag
+
+    %{
+      data: %{
+        scores: for(score <- scores, do: data(score)),
+        last_execution_result: last_execution_result,
+        current_page: scores_with_pag.current_page,
+        total_count: scores_with_pag.total_count,
+        total_pages: scores_with_pag.total_pages,
+        page_size: scores_with_pag.page_size
+      }
+    }
+  end
+
   def index(%{scores: scores}) do
     %{data: for(score <- scores, do: data(score))}
   end
@@ -53,7 +68,8 @@ defmodule TdQxWeb.ScoreJSON do
       score_type: score.score_type,
       quality_control_status: score.quality_control_status,
       status: score.status,
-      score_content: ScoreContent.to_json(score.score_content)
+      score_content: ScoreContent.to_json(score.score_content),
+      created_at: score.inserted_at
     }
     |> with_quality_control_version(score)
     |> with_events(score)

@@ -70,12 +70,13 @@ defmodule TdQx.ScoresTest do
     test "preloads scores and events" do
       group = insert(:score_group)
       score = insert(:score, group: group)
-      event = insert(:score_event, type: "PENDING", score: score)
+      event = insert(:score_event, type: "PENDING", score: score, message: nil)
 
       result =
         Scores.get_score_group(group.id, preload: [scores: [:status, :events]])
 
       assert group <~> result
+
       assert [score] ||| result.scores
 
       [%{events: result_events, status: "PENDING"}] = result.scores
@@ -175,25 +176,20 @@ defmodule TdQx.ScoresTest do
 
     test "preloads events and status" do
       score1 = insert(:score)
-      insert(:score_event, type: "PENDING", score: score1)
-      insert(:score_event, type: "QUEUED", score: score1)
+      score1_event_pending = insert(:score_event, type: "PENDING", score: score1)
+      score1_event_queued = insert(:score_event, type: "QUEUED", score: score1)
 
       score2 = insert(:score)
-      insert(:score_event, type: "PENDING", score: score2)
+      score2_event_pending = insert(:score_event, type: "PENDING", score: score2)
 
-      results = Scores.list_scores(preload: [:status, :events])
-      assert [score1, score2] ||| results
+      [listed_score1, listed_score2] =
+        Scores.list_scores(preload: [:status, :events, :quality_control_version])
 
-      assert [
-               %{
-                 events: [
-                   %{type: "PENDING"},
-                   %{type: "QUEUED"}
-                 ],
-                 status: "QUEUED"
-               },
-               %{events: [%{type: "PENDING"}], status: "PENDING"}
-             ] = results
+      assert "QUEUED" = listed_score1.status
+      assert "PENDING" = listed_score2.status
+
+      assert [score1_event_pending, score1_event_queued] ||| listed_score1.events
+      assert [score2_event_pending] ||| listed_score2.events
     end
 
     test "filters by status" do
@@ -387,7 +383,11 @@ defmodule TdQx.ScoresTest do
     end
 
     test "parses the result into score_content and set status as SUCCEEDED" do
-      score = insert(:score, score_type: "ratio")
+      %{id: group_id} = group = insert(:score_group)
+
+      %{quality_control_version_id: quality_control_version_id} =
+        score = insert(:score, score_type: "ratio", group_id: group_id, group: group)
+
       insert(:score_event, type: "STARTED", score: score)
 
       params = %{
@@ -414,7 +414,7 @@ defmodule TdQx.ScoresTest do
       assert %{status: "SUCCEEDED"} = Scores.get_score(score.id, preload: :status)
 
       assert IndexWorkerMock.calls() == [
-               {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
+               {:reindex, :quality_control_versions, [ids: quality_control_version_id]}
              ]
     end
 
@@ -446,7 +446,11 @@ defmodule TdQx.ScoresTest do
     end
 
     test "updates score and set status as FAILED" do
-      score = insert(:score, score_type: "ratio")
+      %{id: group_id} = group = insert(:score_group)
+
+      %{quality_control_version_id: quality_control_version_id} =
+        score = insert(:score, score_type: "ratio", group_id: group_id, group: group)
+
       insert(:score_event, type: "STARTED", score: score)
 
       params = %{
@@ -463,17 +467,19 @@ defmodule TdQx.ScoresTest do
       assert %{status: "FAILED"} = Scores.get_score(score.id, preload: :status)
 
       assert IndexWorkerMock.calls() == [
-               {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
+               {:reindex, :quality_control_versions, [ids: quality_control_version_id]}
              ]
     end
 
     test "invalid params" do
       score = insert(:score, score_type: "ratio")
+
       insert(:score_event, type: "STARTED", score: score)
 
-      params = %{
-        "execution_timestamp" => nil
-      }
+      params =
+        %{
+          "execution_timestamp" => nil
+        }
 
       assert {:error, %{errors: errors}} = Scores.updated_failed_score(score, params)
 
@@ -490,19 +496,49 @@ defmodule TdQx.ScoresTest do
       :ok
     end
 
-    test "deletes a score" do
-      score = insert(:score)
+    test "deletes a score and it score_group because is empty" do
+      %{id: score_group_id} = score_group = insert(:score_group)
+      score = insert(:score, group_id: score_group_id, group: score_group)
+
+      assert !is_nil(Scores.get_score(score.id))
+      assert !is_nil(Scores.get_score_group(score_group_id))
 
       assert {:ok, %Score{}} = Scores.delete_score(score)
+
       assert is_nil(Scores.get_score(score.id))
+      assert is_nil(Scores.get_score_group(score_group_id))
 
       assert IndexWorkerMock.calls() == [
+               {:delete, :score_groups, [score_group_id]},
                {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
              ]
     end
 
+    test "deletes a score of a group with more scores and the group is not deleted" do
+      %{id: score_group_id} = score_group = insert(:score_group)
+      score1 = insert(:score, group_id: score_group_id, group: score_group)
+      score2 = insert(:score, group_id: score_group_id, group: score_group)
+
+      assert !is_nil(Scores.get_score(score1.id))
+      assert !is_nil(Scores.get_score(score2.id))
+      assert !is_nil(Scores.get_score_group(score_group_id))
+
+      assert {:ok, %Score{}} = Scores.delete_score(score1)
+
+      assert is_nil(Scores.get_score(score1.id))
+      assert !is_nil(Scores.get_score(score2.id))
+      assert !is_nil(Scores.get_score_group(score_group_id))
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :score_groups, [{:id, score_group_id}]},
+               {:reindex, :quality_control_versions, [ids: score1.quality_control_version_id]}
+             ]
+    end
+
     test "deletes score's events" do
-      score = insert(:score)
+      %{id: group_id} = group = insert(:score_group)
+      score = insert(:score, group_id: group_id, group: group)
+
       insert(:score_event, type: "PENDING", score: score)
 
       assert [%TdQx.Scores.ScoreEvent{}] = Repo.all(ScoreEvent)
