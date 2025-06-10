@@ -22,6 +22,13 @@ defmodule TdQxWeb.FallbackController do
     |> render(:error, changeset: changeset)
   end
 
+  def call(conn, {:error, %Flop.Meta{} = result}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: TdQxWeb.FlopErrorsJSON)
+    |> render(:error, changeset: result)
+  end
+
   # This clause is an example of how to handle resources that cannot be found.
   def call(conn, {:error, :not_found}) do
     conn

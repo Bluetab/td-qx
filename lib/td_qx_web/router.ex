@@ -36,7 +36,7 @@ defmodule TdQxWeb.Router do
       patch "/draft", QualityControlController, :update_draft
       patch "/status", QualityControlController, :update_status
       patch "/main", QualityControlController, :update_main
-      get "/scores", ScoreController, :index_by_quality_control
+      post("/scores", ScoreController, :search_with_pagination)
 
       resources "/versions", QualityControlVersionController,
         only: [:show, :index, :delete],

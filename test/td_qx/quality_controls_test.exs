@@ -671,22 +671,104 @@ defmodule TdQx.QualityControlsTest do
     end
   end
 
+  describe "get_quality_control_with_latest_result/1" do
+    test "returns an empty map when there are no scores" do
+      quality_control = insert(:quality_control)
+
+      assert {:last_execution_result, %{}} ==
+               QualityControls.get_quality_control_with_latest_result(%{id: quality_control.id})
+    end
+
+    Enum.each(["FAILED", "SUCCEEDED"], fn loop_status ->
+      test "returns the latest executed result (#{loop_status}) when scores are available" do
+        status = unquote(loop_status)
+
+        {%{id: quality_control_id}, version} = create_quality_control("published", 1)
+
+        %{last_execution_result: last_execution_result} =
+          create_score(version, status, "published", ~U[2023-05-02 12:00:00Z])
+
+        {:last_execution_result, received_last_execution_result} =
+          QualityControls.get_quality_control_with_latest_result(%{id: quality_control_id})
+
+        assert received_last_execution_result == last_execution_result
+      end
+    end)
+
+    Enum.each(
+      ["QUEUED", "TIMEOUT", "PENDING", "STARTED", "INFO", "WARNING"],
+      fn loop_status ->
+        test "return empty map with invalid score status: #{loop_status}" do
+          status = unquote(loop_status)
+
+          {%{id: quality_control_id}, version} = create_quality_control("published", 1)
+          create_score(version, status, "published")
+
+          assert {:last_execution_result, %{}} ==
+                   QualityControls.get_quality_control_with_latest_result(%{
+                     id: quality_control_id
+                   })
+        end
+      end
+    )
+  end
+
   defp create_score(version, type_event, quality_control_status),
     do: create_score(version, type_event, quality_control_status, DateTime.utc_now())
 
   defp create_score(version, type_event, quality_control_status, execution_timestamp) do
+    statuses = ["PENDING"] ++ ensure_list(type_event)
+    %{id: group_id} = insert(:score_group)
+
+    last_status = List.last(statuses)
+
+    score_result_detail =
+      if last_status == "ERROR", do: %{error: "Error in the event"}, else: %{"foo" => "manchu"}
+
     score =
       insert(:score,
         quality_control_version: version,
         quality_control_status: quality_control_status,
-        execution_timestamp: DateTime.add(execution_timestamp, 60)
+        execution_timestamp: DateTime.add(execution_timestamp, 60, :second),
+        status: last_status,
+        group_id: group_id,
+        latest_event_message: "Last status received: #{last_status}",
+        details: score_result_detail
       )
 
-    insert(:score_event, type: "PENDING", score: score)
-    insert(:score_event, type: type_event, score: score)
+    events =
+      Enum.map(
+        statuses,
+        &insert(:score_event,
+          message: "Last status received: #{last_status}",
+          type: &1,
+          score: score
+        )
+      )
+
+    last_execution_result =
+      events
+      |> List.last()
+      |> Map.get(:score)
+      |> Map.take([
+        :id,
+        :group_id,
+        :quality_control_version_id,
+        :latest_event_message,
+        :execution_timestamp,
+        :type,
+        :details,
+        :status
+      ])
 
     score
+    |> Map.put(:events, events)
+    |> Map.put(:last_execution_result, last_execution_result)
   end
+
+  defp ensure_list(value) when is_list(value), do: value
+  defp ensure_list(value) when is_binary(value), do: [value]
+  defp ensure_list(nil), do: []
 
   defp create_quality_control(qcv_status, qcv_version) do
     qc = insert(:quality_control)

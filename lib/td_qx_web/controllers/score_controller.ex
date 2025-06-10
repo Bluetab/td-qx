@@ -11,17 +11,25 @@ defmodule TdQxWeb.ScoreController do
 
   action_fallback(TdQxWeb.FallbackController)
 
-  def index_by_quality_control(conn, %{"quality_control_id" => quality_control_id}) do
+  def search_with_pagination(conn, %{"quality_control_id" => quality_control_id} = params) do
     claims = conn.assigns[:current_resource]
+    preload = [status: ["FAILED", "SUCCEEDED"]]
 
     with {:qc, %QualityControl{} = quality_control} <-
            {:qc, QualityControls.get_quality_control(quality_control_id)},
          :ok <- Bodyguard.permit(Scores, :index, claims, quality_control),
-         scores <- Scores.list_scores(quality_control_id: quality_control_id, preload: :status) do
-      render(conn, :index, scores: scores)
+         {:ok, scores} <- Scores.search_scores(params, preload),
+         {:last_execution_result, last_execution_result} <-
+           QualityControls.get_quality_control_with_latest_result(quality_control) do
+      render(conn, :index,
+        search: %{scores: scores, last_execution_result: last_execution_result}
+      )
     else
-      {:qc, _} -> {:error, :not_found}
-      error -> error
+      {key, nil} when key in [:qc, :last_execution_result] ->
+        {:error, :not_found}
+
+      error ->
+        error
     end
   end
 

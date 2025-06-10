@@ -1,5 +1,15 @@
 # Changelog
 
+## [7.6.0] 2025-06-10
+
+### Added
+
+- [TD-7233]
+  - Reindex score_groups when a score is deleted and their group is empty
+  - Added pagination with Flop for paginate results (scores) of a quality_control
+  - Added last execution info in scores search of a quality control
+  - If after delete a score, their score group is empty, the score group is deleted too
+
 ## [7.5.0] 2025-04-30
 
 ### Fixed

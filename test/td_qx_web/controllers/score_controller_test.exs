@@ -28,36 +28,66 @@ defmodule TdQxWeb.ScoreControllerTest do
   end
 
   describe "index_by_quality_control - POST /api/quality_controls/:quality_control_id/scores" do
-    @tag authentication: [role: "service"]
+    @tag authentication: [role: "admin"]
     test "lists score with enriched status", %{conn: conn} do
-      %{id: score_id, quality_control_version: %{quality_control_id: quality_control_id}} =
+      %{
+        id: score_id,
+        quality_control_version: %{id: qcv_id, quality_control_id: quality_control_id}
+      } =
         score = insert(:score)
 
-      insert(:score_event, type: "STARTED", score: score)
+      insert(:score_event, type: "FAILED", score: score)
 
       insert(:score_event)
       insert(:score_event)
 
-      assert %{"data" => [%{"id" => ^score_id, "status" => "STARTED"}]} =
+      assert %{
+               "data" => %{
+                 "current_page" => 1,
+                 "scores" => [
+                   %{
+                     "id" => ^score_id,
+                     "quality_control_version_id" => ^qcv_id,
+                     "status" => "FAILED"
+                   }
+                 ],
+                 "total_count" => 1,
+                 "total_pages" => 1
+               }
+             } =
                conn
-               |> get(~p"/api/quality_controls/#{quality_control_id}/scores")
+               |> post(~p"/api/quality_controls/#{quality_control_id}/scores")
                |> json_response(:ok)
     end
 
     @tag authentication: [role: "user", permissions: ["view_quality_controls"]]
     test "user with permissions", %{conn: conn, domain: %{id: domain_id}} do
-      qcv =
+      %{id: qcv_id} =
+        qcv =
         insert(:quality_control_version,
           quality_control: build(:quality_control, domain_ids: [domain_id])
         )
 
       %{id: score_id} = score = insert(:score, quality_control_version: qcv)
 
-      insert(:score_event, type: "STARTED", score: score)
+      insert(:score_event, type: "SUCCEEDED", score: score)
 
-      assert %{"data" => [%{"id" => ^score_id}]} =
+      assert %{
+               "data" => %{
+                 "current_page" => 1,
+                 "scores" => [
+                   %{
+                     "id" => ^score_id,
+                     "quality_control_version_id" => ^qcv_id,
+                     "status" => "SUCCEEDED"
+                   }
+                 ],
+                 "total_count" => 1,
+                 "total_pages" => 1
+               }
+             } =
                conn
-               |> get(~p"/api/quality_controls/#{qcv.quality_control_id}/scores")
+               |> post(~p"/api/quality_controls/#{qcv.quality_control_id}/scores")
                |> json_response(:ok)
     end
 
@@ -70,7 +100,7 @@ defmodule TdQxWeb.ScoreControllerTest do
 
       assert %{"errors" => %{"detail" => "Forbidden"}} =
                conn
-               |> get(~p"/api/quality_controls/#{quality_control_id}/scores")
+               |> post(~p"/api/quality_controls/#{quality_control_id}/scores")
                |> json_response(:forbidden)
     end
   end
@@ -547,7 +577,9 @@ defmodule TdQxWeb.ScoreControllerTest do
   describe "delete - DELETE /api/scores/:id" do
     @tag authentication: [role: "admin"]
     test "admin can delete score", %{conn: conn} do
-      score = insert(:score)
+      %{id: group_id} = group = insert(:score_group)
+      score = insert(:score, group_id: group_id, group: group)
+
       insert(:score_event, type: "PENDING", score: score)
 
       assert conn
@@ -567,7 +599,9 @@ defmodule TdQxWeb.ScoreControllerTest do
           quality_control: build(:quality_control, domain_ids: [domain_id])
         )
 
-      score = insert(:score, quality_control_version: qcv)
+      %{id: group_id} = group = insert(:score_group)
+      score = insert(:score, group_id: group_id, group: group, quality_control_version: qcv)
+
       insert(:score_event, type: "PENDING", score: score)
 
       assert conn
@@ -577,7 +611,9 @@ defmodule TdQxWeb.ScoreControllerTest do
 
     @tag authentication: [role: "user"]
     test "forbidden for user without permission", %{conn: conn} do
-      score = insert(:score)
+      %{id: group_id} = group = insert(:score_group)
+      score = insert(:score, group_id: group_id, group: group)
+
       insert(:score_event, type: "PENDING", score: score)
 
       assert %{"errors" => %{"detail" => "Forbidden"}} =
@@ -592,7 +628,8 @@ defmodule TdQxWeb.ScoreControllerTest do
         status: status
       ]
       test "is valid delete score with status #{status}", %{conn: conn, status: status} do
-        score = insert(:score)
+        %{id: group_id} = group = insert(:score_group)
+        score = insert(:score, group_id: group_id, group: group)
         insert(:score_event, type: status, score: score)
 
         assert conn

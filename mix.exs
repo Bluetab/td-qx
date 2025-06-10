@@ -6,7 +6,7 @@ defmodule TdQx.MixProject do
       app: :td_qx,
       version:
         case System.get_env("APP_VERSION") do
-          nil -> "7.5.0-local"
+          nil -> "7.6.0-local"
           v -> v
         end,
       elixir: "~> 1.18",
@@ -64,7 +64,8 @@ defmodule TdQx.MixProject do
       {:credo, "~> 1.7.11", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.5", only: :dev, runtime: false},
       {:ex_machina, "~> 2.8", only: :test},
-      {:mox, "~> 1.2", only: :test}
+      {:mox, "~> 1.2", only: :test},
+      {:flop, "~> 0.26.1"}
     ]
   end
 
