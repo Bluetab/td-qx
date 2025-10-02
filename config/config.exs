@@ -53,6 +53,15 @@ config :td_qx, TdQx.Scheduler,
     ]
   ]
 
+config :td_cache, :audit,
+  service: "td_qx",
+  stream: "audit:events"
+
+config :td_cache, :event_stream,
+  consumer_id: "default",
+  consumer_group: "qx",
+  streams: []
+
 # Import Elasticsearch config
 import_config "elastic.exs"
 
