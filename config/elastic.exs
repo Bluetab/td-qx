@@ -32,6 +32,11 @@ config :td_core, TdCore.Search.Cluster,
               type: "custom",
               tokenizer: "split_on_non_word",
               filter: ["lowercase", "asciifolding"]
+            },
+            exact_analyzer: %{
+              type: "custom",
+              tokenizer: "split_on_non_word",
+              filter: ["lowercase", "asciifolding"]
             }
           },
           normalizer: %{
@@ -62,6 +67,11 @@ config :td_core, TdCore.Search.Cluster,
         analysis: %{
           analyzer: %{
             default: %{
+              type: "custom",
+              tokenizer: "split_on_non_word",
+              filter: ["lowercase", "asciifolding"]
+            },
+            exact_analyzer: %{
               type: "custom",
               tokenizer: "split_on_non_word",
               filter: ["lowercase", "asciifolding"]
