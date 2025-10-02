@@ -4,6 +4,12 @@
 
 ### Added
 
+- [TD-7520] Add Search enhancements for queries with quoted text
+
+## [7.10.0] 2025-09-19
+
+### Added
+
 - [TD-7417] Forcemerge options for elastic index hot swap
 
 ## [7.7.0] 2025-06-30
