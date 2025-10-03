@@ -31,6 +31,9 @@ guides](http://www.phoenixframework.org/docs/deployment).
 
 ## Environment variables
 
+- `REDIS_AUDIT_STREAM_MAXLEN` (Optional) Maximum length for Redis audit stream. Default: 100
+- `REDIS_STREAM_MAXLEN` (Optional) Maximum length for Redis stream. Default: 100
+
 ### SSL conection
 
 - DB_SSL: boolean value, to enable TSL config, by default is false.
