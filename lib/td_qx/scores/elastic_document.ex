@@ -10,6 +10,8 @@ defmodule TdQx.Scores.ElasticDocument do
   defimpl Document, for: ScoreGroup do
     use ElasticDocument
 
+    alias TdDfLib.Content
+
     @score_group_keys [
       :id,
       :df_type,
@@ -32,7 +34,7 @@ defmodule TdQx.Scores.ElasticDocument do
         |> Format.search_values(template)
         |> case do
           content when is_map(content) ->
-            Enum.into(content, %{}, fn {key, %{"value" => value}} -> {key, value} end)
+            Content.to_legacy(content)
 
           content ->
             content
