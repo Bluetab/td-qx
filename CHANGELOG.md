@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.12.0] 2025-10-29
+
+### Added
+
+- [TD-7340] Support for `dynamic_table` template fields
+
 ## [7.11.0] 2025-10-13
 
 ### Added
