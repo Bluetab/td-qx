@@ -53,6 +53,7 @@ defmodule TdQx.Factory do
       created_by_id: sequence(:created_by_id, & &1),
       source_id: 10,
       queryables: [],
+      mode: :advanced,
       select:
         build(:data_view_queryable,
           type: "select",
