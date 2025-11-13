@@ -342,6 +342,7 @@ defmodule TdQx.DataViewsTest do
       assert data_view.name == name
       assert data_view.description == description
       assert data_view.created_by_id == created_by_id
+      assert data_view.mode == :advanced
     end
 
     test "create_data_view/1 with queryable properties" do

@@ -20,6 +20,7 @@ defmodule TdQxWeb.DataViewJSON do
     %{
       id: data_view.id,
       name: data_view.name,
+      mode: data_view.mode,
       description: data_view.description,
       created_by_id: data_view.created_by_id,
       source_id: data_view.source_id,

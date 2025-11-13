@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-7579] `mode` field in data view
+
 ## [7.12.0] 2025-10-29
 
 ### Added
