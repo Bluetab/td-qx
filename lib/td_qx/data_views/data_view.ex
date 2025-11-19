@@ -9,11 +9,14 @@ defmodule TdQx.DataViews.DataView do
   alias TdQx.DataViews.Queryable
   alias TdQx.Helpers
 
+  @mode ~w(guided advanced)a
+
   schema "data_views" do
     field(:name, :string)
     field(:created_by_id, :integer)
     field(:source_id, :integer)
     field(:description, :string)
+    field(:mode, Ecto.Enum, values: @mode, default: :advanced)
 
     embeds_many(:queryables, Queryable, on_replace: :delete)
 
@@ -25,10 +28,10 @@ defmodule TdQx.DataViews.DataView do
   @doc false
   def changeset(data_view, attrs) do
     data_view
-    |> cast(attrs, [:name, :created_by_id, :description, :source_id])
+    |> cast(attrs, [:name, :created_by_id, :description, :source_id, :mode])
     |> cast_embed(:queryables, with: &Queryable.changeset/2, required: true)
     |> cast_embed(:select, with: &Queryable.changeset_for_select/2, required: true)
-    |> validate_required([:name, :created_by_id, :source_id])
+    |> validate_required([:name, :created_by_id, :source_id, :mode])
     |> validate_unique_queryable_alias
     |> validate_unique_queryable_resources
   end

@@ -1,4 +1,14 @@
-# Changelog
+## [7.13.0] 2025-11-18
+
+### Added
+
+- [TD-7627] Update and refactor test
+
+## [7.12.0] 2025-10-29
+
+### Added
+
+- [TD-7579] `mode` field in data view
 
 ## [7.12.0] 2025-10-29
 
