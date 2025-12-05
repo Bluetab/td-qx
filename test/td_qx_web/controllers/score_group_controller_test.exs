@@ -198,18 +198,34 @@ defmodule TdQxWeb.ScoreGroupControllerTest do
         assert %{
                  query: %{
                    bool: %{
-                     must: [
+                     must: %{
+                       multi_match: %{
+                         type: "bool_prefix",
+                         fields: ["ngram_name*^3"],
+                         query: "",
+                         lenient: true
+                       }
+                     },
+                     should: [
                        %{
                          multi_match: %{
-                           type: "bool_prefix",
-                           fields: ["ngram_name*^3"],
+                           type: "phrase_prefix",
+                           fields: ["name^3"],
                            query: "",
-                           fuzziness: "AUTO",
+                           boost: 4.0,
                            lenient: true
                          }
                        },
-                       %{term: %{"active" => true}}
-                     ]
+                       %{
+                         simple_query_string: %{
+                           fields: ["name^3"],
+                           query: "\"\"",
+                           quote_field_suffix: ".exact",
+                           boost: 4.0
+                         }
+                       }
+                     ],
+                     filter: %{term: %{"active" => true}}
                    }
                  }
                } = params

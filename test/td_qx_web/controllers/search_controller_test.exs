@@ -49,7 +49,7 @@ defmodule TdQxWeb.SearchControllerTest do
                                                  "/quality_control_versions/_search",
                                                  %{query: query},
                                                  _ ->
-        assert %{bool: %{must: %{match_all: %{}}}} == query
+        assert %{bool: %{filter: %{match_all: %{}}}} == query
 
         SearchHelpers.hits_response([response])
       end)
@@ -57,6 +57,99 @@ defmodule TdQxWeb.SearchControllerTest do
       assert %{"data" => [_]} =
                conn
                |> post(~p"/api/quality_controls/search", %{"must" => %{}})
+               |> json_response(:ok)
+    end
+
+    @tag authentication: [role: "admin"]
+    test "admin can search quality_controls with query param", %{conn: conn, response: response} do
+      TdDfMock.list_templates_by_scope(
+        &Mox.expect/4,
+        "quality_control",
+        {:ok, []}
+      )
+
+      Mox.expect(ElasticsearchMock, :request, fn _,
+                                                 :post,
+                                                 "/quality_control_versions/_search",
+                                                 %{query: query},
+                                                 _ ->
+        assert query == %{
+                 bool: %{
+                   filter: %{match_all: %{}},
+                   should: [
+                     %{
+                       multi_match: %{
+                         type: "phrase_prefix",
+                         fields: ["name^3"],
+                         query: "foo",
+                         lenient: true,
+                         boost: 4.0
+                       }
+                     },
+                     %{
+                       simple_query_string: %{
+                         fields: ["name^3"],
+                         query: "\"foo\"",
+                         quote_field_suffix: ".exact",
+                         boost: 4.0
+                       }
+                     }
+                   ],
+                   must: %{
+                     multi_match: %{
+                       type: "bool_prefix",
+                       fields: ["ngram_name*^3"],
+                       query: "foo",
+                       lenient: true
+                     }
+                   }
+                 }
+               }
+
+        SearchHelpers.hits_response([response])
+      end)
+
+      assert %{"data" => [_]} =
+               conn
+               |> post(~p"/api/quality_controls/search", %{"query" => "foo"})
+               |> json_response(:ok)
+    end
+
+    @tag authentication: [role: "admin"]
+    test "admin can perform a quoted search on quality_controls", %{
+      conn: conn,
+      response: response
+    } do
+      TdDfMock.list_templates_by_scope(
+        &Mox.expect/4,
+        "quality_control",
+        {:ok, []}
+      )
+
+      Mox.expect(ElasticsearchMock, :request, fn _,
+                                                 :post,
+                                                 "/quality_control_versions/_search",
+                                                 %{query: query},
+                                                 _ ->
+        assert query == %{
+                 bool: %{
+                   filter: %{match_all: %{}},
+                   must: %{
+                     simple_query_string: %{
+                       fields: ["name^3"],
+                       query: "\"foo\"",
+                       quote_field_suffix: ".exact"
+                     }
+                   }
+                 }
+               }
+
+        SearchHelpers.hits_response([response])
+      end)
+
+      assert %{"data" => [_]} =
+               conn
+               |> post(~p"/api/quality_controls/search", %{"query" => "\"foo\""})
                |> json_response(:ok)
     end
 
@@ -141,7 +234,7 @@ defmodule TdQxWeb.SearchControllerTest do
                                                  "/quality_control_versions/_search",
                                                  %{query: query},
                                                  _ ->
-        assert query == %{bool: %{must: %{term: %{"domain_ids" => domain_id}}}}
+        assert query == %{bool: %{filter: %{term: %{"domain_ids" => domain_id}}}}
         SearchHelpers.hits_response([response])
       end)
 
@@ -172,7 +265,7 @@ defmodule TdQxWeb.SearchControllerTest do
                                  "/quality_control_versions/_search",
                                  %{query: query},
                                  _ ->
-        assert query == %{bool: %{must: %{term: %{"domain_ids" => domain_id}}}}
+        assert query == %{bool: %{filter: %{term: %{"domain_ids" => domain_id}}}}
         SearchHelpers.hits_response([response])
       end)
 
@@ -205,7 +298,7 @@ defmodule TdQxWeb.SearchControllerTest do
                                  "/quality_control_versions/_search",
                                  %{query: query},
                                  _ ->
-        assert query == %{bool: %{must: %{term: %{"domain_ids" => domain_id}}}}
+        assert query == %{bool: %{filter: %{term: %{"domain_ids" => domain_id}}}}
         SearchHelpers.hits_response([response])
       end)
 
@@ -231,7 +324,7 @@ defmodule TdQxWeb.SearchControllerTest do
 
       Mox.expect(ElasticsearchMock, :request, fn
         _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
-          assert query == %{bool: %{must: %{term: %{"name.raw" => "foo"}}}}
+          assert query == %{bool: %{filter: %{term: %{"name.raw" => "foo"}}}}
 
           SearchHelpers.aggs_response(response)
       end)
@@ -259,7 +352,7 @@ defmodule TdQxWeb.SearchControllerTest do
 
       Mox.expect(ElasticsearchMock, :request, fn
         _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
-          assert %{bool: %{must: %{term: %{"domain_ids" => ^domain_id}}}} = query
+          assert %{bool: %{filter: %{term: %{"domain_ids" => ^domain_id}}}} = query
 
           SearchHelpers.aggs_response()
       end)
@@ -290,7 +383,7 @@ defmodule TdQxWeb.SearchControllerTest do
 
       Mox.expect(ElasticsearchMock, :request, fn
         _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
-          assert %{bool: %{must: %{terms: %{"domain_ids" => domain_ids}}}} = query
+          assert %{bool: %{filter: %{terms: %{"domain_ids" => domain_ids}}}} = query
           assert Enum.sort(domain_ids) == Enum.sort([id1, id2])
 
           SearchHelpers.aggs_response()
@@ -327,7 +420,7 @@ defmodule TdQxWeb.SearchControllerTest do
         _, :post, "/quality_control_versions/_search", %{query: query, size: 0}, _ ->
           assert %{
                    bool: %{
-                     must: [
+                     filter: [
                        %{term: %{"active" => true}},
                        %{term: %{"domain_ids" => ^id2}}
                      ]
@@ -427,7 +520,7 @@ defmodule TdQxWeb.SearchControllerTest do
 
       ElasticsearchMock
       |> Mox.expect(:request, fn _, :post, "/score_groups/_search", %{query: query}, _ ->
-        assert %{bool: %{must: %{match_all: %{}}}} == query
+        assert %{bool: %{filter: %{match_all: %{}}}} == query
 
         SearchHelpers.hits_response([score_group])
       end)
@@ -474,7 +567,7 @@ defmodule TdQxWeb.SearchControllerTest do
 
       ElasticsearchMock
       |> Mox.expect(:request, fn _, :post, "/score_groups/_search", %{query: query}, _ ->
-        assert query == %{bool: %{must: %{match_all: %{}}}}
+        assert query == %{bool: %{filter: %{match_all: %{}}}}
         SearchHelpers.hits_response([score_group])
       end)
 
@@ -499,7 +592,7 @@ defmodule TdQxWeb.SearchControllerTest do
       ElasticsearchMock
       |> Mox.expect(:request, fn
         _, :post, "/score_groups/_search", %{query: query, size: 0}, _ ->
-          assert query == %{bool: %{must: %{term: %{"created_by.user_name" => "foo"}}}}
+          assert query == %{bool: %{filter: %{term: %{"created_by.user_name" => "foo"}}}}
 
           SearchHelpers.aggs_response(response)
       end)

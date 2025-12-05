@@ -99,7 +99,7 @@ defmodule TdQx.Scores.ElasticDocument do
       content_schema = Templates.content_schema_for_scope("qxe")
 
       %{
-        fields: [],
+        query: %{},
         aggs: merged_aggregations(content_schema)
       }
     end

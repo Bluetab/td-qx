@@ -13,6 +13,7 @@ defmodule TdQx.Search do
   @default_page 0
   @default_size 20
   @score_group_size 1_000
+  @accepted_wildcards ["\"", ")"]
 
   def search(%{"scroll_id" => _} = params, _claims) do
     params
@@ -90,7 +91,7 @@ defmodule TdQx.Search do
           |> Map.put("active", [true]))
       )
 
-    query_data = %{aggs: aggs} = fetch_query_data()
+    query_data = %{aggs: aggs} = fetch_query_data(%QualityControlVersion{}, params)
     opts = Keyword.new(query_data)
 
     query = Query.build_query(permissions_filter, params, opts)
@@ -100,7 +101,7 @@ defmodule TdQx.Search do
   defp build_query(params, claims, :quality_control_versions) do
     permissions_filter = Permissions.filter_for_permissions(["view_quality_controls"], claims)
 
-    query_data = %{aggs: aggs} = fetch_query_data()
+    query_data = %{aggs: aggs} = fetch_query_data(%QualityControlVersion{}, params)
     opts = Keyword.new(query_data)
 
     query = Query.build_query(permissions_filter, params, opts)
@@ -134,26 +135,43 @@ defmodule TdQx.Search do
     %{results: new_results, total: total}
   end
 
-  defp fetch_query_data(schema \\ %QualityControlVersion{})
-
-  defp fetch_query_data(schema) do
+  defp fetch_query_data(schema, params \\ %{}) do
     schema
     |> ElasticDocumentProtocol.query_data()
-    |> with_search_clauses()
+    |> with_search_clauses(params)
   end
 
-  defp with_search_clauses(%{fields: fields} = query_data) do
-    multi_match_bool_prefix = %{
-      multi_match: %{
-        type: "bool_prefix",
-        fields: fields,
-        lenient: true,
-        fuzziness: "AUTO"
-      }
-    }
-
+  defp with_search_clauses(query_data, params) do
     query_data
     |> Map.take([:aggs])
-    |> Map.put(:clauses, [multi_match_bool_prefix])
+    |> Map.put(:clauses, clause_for_query(query_data, params))
   end
+
+  defp clause_for_query(query_data, %{"query" => query}) when is_binary(query) do
+    if String.last(query) in @accepted_wildcards do
+      strict_clause(query_data)
+    else
+      search_clause(query_data)
+    end
+  end
+
+  defp clause_for_query(query_data, _params), do: search_clause(query_data)
+
+  defp search_clause(%{query: %{simple: simple, as_you_type: as_you_type, exact: exact}}) do
+    %{
+      must: %{multi_match: %{type: "bool_prefix", fields: as_you_type, lenient: true}},
+      should: [
+        %{multi_match: %{type: "phrase_prefix", fields: simple, boost: 4.0, lenient: true}},
+        %{simple_query_string: %{fields: exact, quote_field_suffix: ".exact", boost: 4.0}}
+      ]
+    }
+  end
+
+  defp search_clause(_query_data), do: %{}
+
+  defp strict_clause(%{query: %{simple: fields}}) do
+    %{must: %{simple_query_string: %{fields: fields, quote_field_suffix: ".exact"}}}
+  end
+
+  defp strict_clause(_query_data), do: %{}
 end
