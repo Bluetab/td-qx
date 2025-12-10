@@ -137,7 +137,9 @@ defmodule TdQx.QualityControls.ElasticDocument do
   defimpl ElasticDocumentProtocol, for: QualityControlVersion do
     use ElasticDocument
 
-    @search_fields ~w(ngram_name*^3)
+    @search_as_you_type ~w(ngram_name*^3)
+    @search_simple ~w(name^3)
+    @exact_search ~w(name^3)
 
     def mappings(_) do
       content_mappings = %{properties: get_dynamic_mappings("quality_control")}
@@ -147,7 +149,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
         quality_control_id: %{type: "long", index: false},
         active: %{type: "boolean"},
         domain_ids: %{type: "long"},
-        name: %{type: "text", fields: @raw_sort},
+        name: %{type: "text", fields: Map.merge(@raw_sort, @exact)},
         ngram_name: %{type: "search_as_you_type"},
         version: %{type: "short"},
         control_mode: %{type: "keyword", fields: @raw_sort},
@@ -230,7 +232,7 @@ defmodule TdQx.QualityControls.ElasticDocument do
       content_schema = Templates.content_schema_for_scope("quality_control")
 
       %{
-        fields: @search_fields,
+        query: %{as_you_type: @search_as_you_type, simple: @search_simple, exact: @exact_search},
         aggs: merged_aggregations(content_schema)
       }
     end
