@@ -2,10 +2,10 @@
 
 ### Added
 
-- [TD-7711] 
+- [TD-7711]
   - Phrase prefix search to highlight stricter text matches
   - Ensure consistent use of the default analyzer across all services
-  
+
 ## [7.13.0] 2025-11-18
 
 ### Added
