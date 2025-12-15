@@ -5,8 +5,10 @@ defmodule TdQx.QualityControls do
 
   import Ecto.Query, warn: false
 
+  alias Ecto.Multi
   alias TdCache.TaxonomyCache
   alias TdQx.DataViews
+  alias TdQx.QualityControls.Audit
   alias TdQx.QualityControls.ControlProperties
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
@@ -149,11 +151,31 @@ defmodule TdQx.QualityControls do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_quality_control(%QualityControl{} = quality_control, attrs) do
-    quality_control
-    |> QualityControl.update_changeset(attrs)
-    |> Repo.update()
-    |> TdQx.QualityControlWorkflow.reindex_quality_control()
+  def update_quality_control(%QualityControl{} = quality_control, attrs, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
+
+    changeset = QualityControl.update_changeset(quality_control, attrs)
+
+    Multi.new()
+    |> Multi.run(:current_domains, fn _, _ -> {:ok, quality_control.domain_ids} end)
+    |> Multi.update(:quality_control, changeset)
+    |> Multi.run(:audit, fn _,
+                            %{quality_control: quality_control, current_domains: current_domains} ->
+      Audit.publish(
+        :quality_control_updated,
+        quality_control,
+        user_id,
+        %{changes: changeset.changes, current_domains: current_domains}
+      )
+    end)
+    |> Repo.transaction()
+    |> tap(fn
+      {:ok, %{quality_control: quality_control}} ->
+        Indexer.reindex(quality_control_ids: [quality_control.id])
+
+      _other ->
+        :noop
+    end)
   end
 
   @doc """
@@ -258,7 +280,12 @@ defmodule TdQx.QualityControls do
       ** (Ecto.NoResultsError)
 
   """
-  def get_quality_control_version!(id), do: Repo.get!(QualityControlVersion, id)
+
+  def get_quality_control_version!(id) do
+    QualityControlVersion
+    |> preload(:quality_control)
+    |> Repo.get!(id)
+  end
 
   def get_quality_control_version(quality_control_id, version, opts \\ []) do
     preload =
@@ -316,28 +343,39 @@ defmodule TdQx.QualityControls do
 
   ## Examples
 
-      iex> delete_quality_control_version(quality_control_version)
+      iex> delete_quality_control_version(quality_control_version, user_id: 123)
       {:ok, %QualityControlVersion{}}
 
-      iex> delete_quality_control_version(quality_control_version)
+      iex> delete_quality_control_version(quality_control_version, user_id: 123)
       {:error, %Ecto.Changeset{}}
 
   """
-  def delete_quality_control_version(
-        %QualityControlVersion{id: id, status: "draft"} = quality_control_version
-      ) do
-    quality_control_version
-    |> Repo.preload(quality_control: :versions)
-    |> then(fn
-      %QualityControlVersion{
-        quality_control:
-          %QualityControl{versions: [%QualityControlVersion{id: ^id}]} = quality_control
-      } ->
-        Repo.delete(quality_control)
+  def delete_quality_control_version(quality_control_version, opts \\ [])
 
-      %QualityControlVersion{quality_control: %QualityControl{versions: [_ | _]}} ->
-        Repo.delete(quality_control_version)
+  def delete_quality_control_version(
+        %QualityControlVersion{id: id, status: "draft"} = quality_control_version,
+        opts
+      ) do
+    quality_control_version = Repo.preload(quality_control_version, quality_control: :versions)
+    user_id = Keyword.get(opts, :user_id)
+
+    Multi.new()
+    |> Multi.run(:quality_control_version, fn _, _ ->
+      case quality_control_version do
+        %QualityControlVersion{
+          quality_control:
+            %QualityControl{versions: [%QualityControlVersion{id: ^id}]} = quality_control
+        } ->
+          Repo.delete(quality_control)
+
+        %QualityControlVersion{quality_control: %QualityControl{versions: [_ | _]}} ->
+          Repo.delete(quality_control_version)
+      end
     end)
+    |> Multi.run(:audit, fn _, _ ->
+      Audit.publish(:quality_control_version_deleted, quality_control_version, user_id)
+    end)
+    |> Repo.transaction()
     |> tap(fn
       {:ok, _response} ->
         Indexer.delete([id])
@@ -347,7 +385,7 @@ defmodule TdQx.QualityControls do
     end)
   end
 
-  def delete_quality_control_version(%QualityControlVersion{status: _other}) do
+  def delete_quality_control_version(%QualityControlVersion{status: _other}, _opts) do
     {:error, :forbidden}
   end
 

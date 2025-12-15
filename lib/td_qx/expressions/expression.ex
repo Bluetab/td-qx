@@ -12,6 +12,7 @@ defmodule TdQx.Expressions.Expression do
   @valid_shapes ~w|constant function param field|
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :shape, :string
     embeds_one(:value, ExpressionValue, on_replace: :delete)

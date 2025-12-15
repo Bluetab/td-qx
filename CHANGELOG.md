@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-7657] Audit messages for `quality_controls` and `score` related entities
+
 ## [7.14.0] 2025-12-10
 
 ### Added

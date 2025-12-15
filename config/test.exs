@@ -29,5 +29,6 @@ config :logger, level: :warning
 config :phoenix, :plug_init_mode, :runtime
 
 config :td_cache, redis_host: "redis", port: 6380
+config :td_cache, :audit, stream: "audit:events:test"
 
 config :td_qx, TdQx.Scheduler, jobs: []

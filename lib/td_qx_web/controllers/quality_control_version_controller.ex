@@ -39,7 +39,9 @@ defmodule TdQxWeb.QualityControlVersionController do
            QualityControls.get_quality_control_version(id, version, preload: [:quality_control]),
          :ok <- Bodyguard.permit(QualityControls, :delete, claims, quality_control_version),
          {:ok, _response} <-
-           QualityControls.delete_quality_control_version(quality_control_version) do
+           QualityControls.delete_quality_control_version(quality_control_version,
+             user_id: claims.user_id
+           ) do
       send_resp(conn, :no_content, "")
     else
       nil -> {:error, :not_found}

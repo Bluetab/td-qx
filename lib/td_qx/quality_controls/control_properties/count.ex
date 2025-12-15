@@ -9,6 +9,7 @@ defmodule TdQx.QualityControls.ControlProperties.Count do
   alias TdQx.DataViews.Resource
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     embeds_one(:errors_resource, Resource, on_replace: :delete)
   end

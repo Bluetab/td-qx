@@ -3,11 +3,15 @@ defmodule TdQx.QualityControlsTest do
 
   import TdQx.TestOperators
 
+  alias TdCache.Redix
+  alias TdCache.Redix.Stream
   alias TdCore.Search.IndexWorkerMock
   alias TdQx.QualityControls
   alias TdQx.QualityControls.ControlProperties
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
+
+  @audit_stream TdCache.Audit.stream()
 
   describe "quality_controls" do
     @invalid_attrs %{description: nil, domain_ids: nil, name: nil}
@@ -130,7 +134,7 @@ defmodule TdQx.QualityControlsTest do
     test "update_quality_control/1 only update active" do
       %{domain_ids: domain_ids, active: true} = quality_control = insert(:quality_control)
 
-      assert {:ok, %{domain_ids: ^domain_ids, active: false}} =
+      assert {:ok, %{quality_control: %{domain_ids: ^domain_ids, active: false}}} =
                QualityControls.update_quality_control(quality_control, %{
                  "active" => false,
                  "domains_ids" => [100]
@@ -604,19 +608,25 @@ defmodule TdQx.QualityControlsTest do
 
   describe "delete_quality_control_version/1" do
     setup do
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
+
       IndexWorkerMock.clear()
       :ok
     end
 
     test "deletes quality control when the version to delete is the only one" do
       quality_control_version =
-        %{quality_control: %{id: id}} =
+        %{quality_control: %{id: id} = quality_control} =
         insert(:quality_control_version,
           status: "draft",
           quality_control: insert(:quality_control)
         )
 
-      assert {:ok, %QualityControl{id: ^id}} =
+      assert {:ok, %{quality_control_version: %QualityControl{id: ^id}}} =
                QualityControls.delete_quality_control_version(quality_control_version)
 
       refute Repo.get(QualityControl, id)
@@ -625,6 +635,15 @@ defmodule TdQx.QualityControlsTest do
       assert IndexWorkerMock.calls() == [
                {:delete, :quality_control_versions, [quality_control_version.id]}
              ]
+
+      assert {:ok, [event]} = Stream.read(:redix, @audit_stream, count: 1, transform: true)
+      assert event.event == "quality_control_version_deleted"
+      assert event.resource_type == "quality_control"
+      assert event.resource_id == to_string(quality_control.id)
+      payload = Jason.decode!(event.payload)
+      assert payload["quality_control_version_id"] == quality_control_version.id
+      assert payload["quality_control_id"] == quality_control.id
+      assert payload["status"] == "draft"
     end
 
     test "deletes quality control version when the quality control has more versions" do
@@ -645,7 +664,7 @@ defmodule TdQx.QualityControlsTest do
           version: 2
         )
 
-      assert {:ok, %QualityControlVersion{id: ^id}} =
+      assert {:ok, %{quality_control_version: %QualityControlVersion{id: ^id}}} =
                QualityControls.delete_quality_control_version(draft)
 
       assert Repo.get(QualityControl, quality_control.id)
@@ -653,6 +672,14 @@ defmodule TdQx.QualityControlsTest do
       refute Repo.get(QualityControlVersion, draft.id)
 
       assert IndexWorkerMock.calls() == [{:delete, :quality_control_versions, [draft.id]}]
+      assert {:ok, [event]} = Stream.read(:redix, @audit_stream, count: 1, transform: true)
+      assert event.event == "quality_control_version_deleted"
+      assert event.resource_type == "quality_control"
+      assert event.resource_id == to_string(quality_control.id)
+      payload = Jason.decode!(event.payload)
+      assert payload["quality_control_version_id"] == draft.id
+      assert payload["quality_control_id"] == quality_control.id
+      assert payload["status"] == "draft"
     end
 
     test "returns forbidden when quality control version is not in draft" do

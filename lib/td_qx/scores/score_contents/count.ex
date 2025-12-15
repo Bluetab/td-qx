@@ -8,6 +8,7 @@ defmodule TdQx.Scores.ScoreContents.Count do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :count, :integer
   end

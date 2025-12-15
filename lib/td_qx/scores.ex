@@ -10,6 +10,7 @@ defmodule TdQx.Scores do
   alias TdQx.QualityControls.ScoreCriteria
   alias TdQx.QualityControls.ScoreCriterias
   alias TdQx.Repo
+  alias TdQx.Scores.Audit
   alias TdQx.Scores.Score
   alias TdQx.Scores.ScoreContent
   alias TdQx.Scores.ScoreContents.Count
@@ -77,9 +78,11 @@ defmodule TdQx.Scores do
     |> Repo.one()
   end
 
-  def create_score_group([], _), do: {:error, :unprocessable_entity}
+  def create_score_group(_quality_control_version_ids, _params, opts \\ [])
+  def create_score_group([], _, _), do: {:error, :unprocessable_entity}
 
-  def create_score_group(quality_control_version_ids, params) do
+  def create_score_group(quality_control_version_ids, params, opts) do
+    user_id = Keyword.get(opts, :user_id, nil)
     changeset = ScoreGroup.changeset(%ScoreGroup{}, params)
 
     multi = Multi.insert(Multi.new(), :score_group, changeset)
@@ -88,12 +91,35 @@ defmodule TdQx.Scores do
     |> Enum.reduce(multi, fn qcv_id, multi ->
       Multi.insert(
         multi,
-        String.to_atom("score_#{qcv_id}"),
+        qcv_id,
         &multi_insert_score(&1, qcv_id)
       )
     end)
+    |> Multi.run(:scores, fn _, results = %{} ->
+      scores =
+        results
+        |> Map.delete(:score_group)
+        |> Map.values()
+
+      {:ok, scores}
+    end)
+    |> Multi.run(:audit_score_group_created, fn _, %{score_group: score_group} ->
+      Audit.publish(:score_group_created, score_group, user_id)
+    end)
+    |> Multi.run(:audit_score_created, fn _, %{scores: scores} ->
+      scores
+      |> Enum.map(&{:score_created, &1})
+      |> Audit.publish_all(user_id)
+    end)
+    |> Multi.run(:audit_events_created, fn _, %{scores: scores} ->
+      scores
+      |> Enum.flat_map(& &1.events)
+      |> Repo.preload(score: [quality_control_version: :quality_control])
+      |> Enum.map(&{:score_event_created, &1})
+      |> Audit.publish_all(user_id)
+    end)
     |> Repo.transaction()
-    |> on_upsert()
+    |> tap(&on_score_group_upsert/1)
   end
 
   defp multi_insert_score(
@@ -106,21 +132,20 @@ defmodule TdQx.Scores do
     })
   end
 
-  defp on_upsert({:ok, %{score_group: %{id: group_id}} = multi_results} = res) do
+  defp on_score_group_upsert({:ok, %{score_group: %{id: group_id}} = multi_results}) do
     version_ids =
       multi_results
-      |> Map.delete(:score_group)
-      |> Enum.map(fn {_score_key, %Score{quality_control_version_id: quality_control_version_id}} ->
+      |> Map.get(:scores, [])
+      |> Enum.map(fn %Score{quality_control_version_id: quality_control_version_id} ->
         quality_control_version_id
       end)
       |> Enum.uniq()
 
     Indexer.reindex(ids: version_ids)
     Indexer.reindex([id: group_id], :score_groups)
-    res
   end
 
-  defp on_upsert(res), do: res
+  defp on_score_group_upsert(_res), do: :noop
 
   def latest_score_subquery(opts \\ []) do
     opts
@@ -285,9 +310,7 @@ defmodule TdQx.Scores do
           score_id: e.score_id,
           type: e.type,
           message: e.message,
-          rn:
-            row_number()
-            |> over(partition_by: e.score_id, order_by: [desc: e.inserted_at])
+          rn: over(row_number(), partition_by: e.score_id, order_by: [desc: e.inserted_at])
         }
       )
       |> subquery()
@@ -299,87 +322,134 @@ defmodule TdQx.Scores do
   end
 
   def update_scores_quality_control_properties(opts \\ []) do
-    query =
+    scores_query =
       opts
       |> Keyword.put(:preload, [])
+      |> Keyword.delete(:user_id)
       |> scores_query()
 
-    from(s in query,
-      join: qcv in assoc(s, :quality_control_version),
-      update: [
-        set: [
-          quality_control_status: qcv.status,
-          score_type:
-            fragment(
-              "CASE
-                WHEN ? IN ('deviation', 'percentage', 'error_count') THEN 'ratio'
-                WHEN ? IN ('count') THEN 'count'
-                ELSE NULL
-              END",
-              qcv.control_mode,
-              qcv.control_mode
-            )
-        ]
-      ]
+    user_id = Keyword.get(opts, :user_id)
+
+    Multi.new()
+    |> Multi.update_all(
+      :scores,
+      from(s in scores_query,
+        join: qcv in assoc(s, :quality_control_version),
+        update: [
+          set: [
+            quality_control_status: qcv.status,
+            score_type:
+              fragment(
+                "CASE
+              WHEN ? IN ('deviation', 'percentage', 'error_count') THEN 'ratio'
+              WHEN ? IN ('count') THEN 'count'
+              ELSE NULL
+            END",
+                qcv.control_mode,
+                qcv.control_mode
+              )
+          ]
+        ],
+        select_merge: %{
+          quality_control_status: s.quality_control_status,
+          score_type: s.score_type
+        }
+      ),
+      []
     )
-    |> Repo.update_all([])
+    |> Multi.run(:audit_scores, fn
+      _, %{scores: {_c, [_ | _] = scores}} ->
+        scores
+        |> Enum.map(
+          &{:score_updated, &1, %{changes: Map.take(&1, [:quality_control_status, :score_type])}}
+        )
+        |> Audit.publish_all(user_id)
+
+      _, _ ->
+        {:ok, []}
+    end)
+    |> Repo.transaction()
   end
 
-  def updated_succeeded_score(score, params) do
-    score
-    |> Score.suceedded_changeset(params)
-    |> Repo.update()
-    |> case do
-      {:ok, score} ->
-        create_score_event(
-          %{
-            score_id: score.id,
-            type: "SUCCEEDED",
-            message: Map.get(params, "message")
-          },
-          reindex: false
-        )
+  def updated_succeeded_score(score, params, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
+    changeset = Score.suceedded_changeset(score, params)
+    message = Map.get(params, "message")
 
-        {:ok, score}
-
-      error ->
-        error
-    end
+    Multi.new()
+    |> Multi.update(:score, changeset)
+    |> Multi.insert(:score_event, fn %{score: score} ->
+      ScoreEvent.changeset(%ScoreEvent{}, %{
+        score_id: score.id,
+        type: "SUCCEEDED",
+        message: message
+      })
+    end)
+    |> Multi.run(:audit_score, fn _, %{score: score} ->
+      Audit.publish(:score_status_updated, score, user_id, %{
+        status: "succeeded",
+        changes: changeset.changes,
+        latest_event_message: message
+      })
+    end)
+    |> Multi.run(:audit_score_event, fn _, %{score_event: score_event} ->
+      score_event = Repo.preload(score_event, score: [quality_control_version: :quality_control])
+      Audit.publish(:score_event_created, score_event, user_id)
+    end)
+    |> Repo.transaction()
     |> tap(&on_upserted_score/1)
   end
 
-  def updated_failed_score(score, params) do
-    score
-    |> Score.failed_changeset(params)
-    |> Repo.update()
-    |> case do
-      {:ok, score} ->
-        create_score_event(
-          %{
-            score_id: score.id,
-            type: "FAILED",
-            message: Map.get(params, "message")
-          },
-          reindex: false
-        )
+  def updated_failed_score(score, params, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
+    changeset = Score.failed_changeset(score, params)
+    message = Map.get(params, "message")
 
-        {:ok, score}
-
-      error ->
-        error
-    end
+    Multi.new()
+    |> Multi.update(:score, changeset)
+    |> Multi.insert(:score_event, fn %{score: score} ->
+      ScoreEvent.changeset(%ScoreEvent{}, %{
+        score_id: score.id,
+        type: "FAILED",
+        message: message
+      })
+    end)
+    |> Multi.run(:audit_score, fn _, %{score: score} ->
+      Audit.publish(:score_status_updated, score, user_id, %{
+        status: "failed",
+        changes: changeset.changes,
+        latest_event_message: message
+      })
+    end)
+    |> Multi.run(:audit_score_event, fn _, %{score_event: score_event} ->
+      score_event = Repo.preload(score_event, score: [quality_control_version: :quality_control])
+      Audit.publish(:score_event_created, score_event, user_id)
+    end)
+    |> Repo.transaction()
     |> tap(&on_upserted_score/1)
   end
 
-  def delete_score(%Score{} = score) do
+  def delete_score(%Score{} = score, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
+
     Multi.new()
     |> Multi.delete(:delete_score, score)
     |> maybe_delete_score_group(score)
+    |> Multi.run(:audit_score, fn _, %{delete_score: score} ->
+      Audit.publish(:score_deleted, score, user_id)
+    end)
+    |> Multi.run(:audit_score_group, fn
+      _, %{delete_score_group: %ScoreGroup{} = score_group} ->
+        Audit.publish(:score_group_deleted, score_group, user_id)
+
+      _, _ ->
+        {:ok, nil}
+    end)
     |> Repo.transaction()
     |> on_deleted_score_group()
   end
 
-  def maybe_delete_score_group(multi, %Score{group_id: group_id, id: score_id}) do
+  defp maybe_delete_score_group(multi, %Score{group_id: group_id, id: score_id}) do
     %{scores: scores} = score_group = get_score_group(group_id, preload: :scores)
 
     case scores do
@@ -391,35 +461,41 @@ defmodule TdQx.Scores do
     end
   end
 
-  def maybe_delete_score_group(result), do: result
+  defp maybe_delete_score_group(multi, _result), do: multi
 
-  def insert_event_for_scores(scores, event_params) do
+  def insert_event_for_scores(scores, event_params, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
     utc_now = DateTime.utc_now()
 
     events =
       Enum.map(scores, fn %{id: id} ->
-        Map.merge(
-          event_params,
-          %{
-            score_id: id,
-            inserted_at: utc_now,
-            updated_at: utc_now
-          }
-        )
+        score_params = %{score_id: id, inserted_at: utc_now, updated_at: utc_now}
+        Map.merge(event_params, score_params)
       end)
 
-    ScoreEvent
-    |> Repo.insert_all(events, returning: true)
+    Multi.new()
+    |> Multi.insert_all(:score_events, ScoreEvent, events, returning: true)
+    |> Multi.run(:audit_score_events, fn _, %{score_events: {_count, score_events}} ->
+      score_events
+      |> Repo.preload(score: [quality_control_version: :quality_control])
+      |> Enum.map(&{:score_event_created, &1})
+      |> Audit.publish_all(user_id)
+    end)
+    |> Repo.transaction()
     |> tap(&on_events_insert/1)
   end
 
-  def create_score_event(attrs \\ %{}, opts \\ []) do
-    reindex = Keyword.get(opts, :reindex, true)
+  def create_score_event(attrs, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
 
-    %ScoreEvent{}
-    |> ScoreEvent.changeset(attrs)
-    |> Repo.insert()
-    |> tap(&on_event_insert(&1, reindex))
+    Multi.new()
+    |> Multi.insert(:score_event, ScoreEvent.changeset(%ScoreEvent{}, attrs))
+    |> Multi.run(:audit_score_event, fn _, %{score_event: score_event} ->
+      score_event = Repo.preload(score_event, score: [quality_control_version: :quality_control])
+      Audit.publish(:score_event_created, score_event, user_id)
+    end)
+    |> Repo.transaction()
+    |> tap(&on_event_insert/1)
   end
 
   def score_content(
@@ -558,7 +634,7 @@ defmodule TdQx.Scores do
   defp calculate_ratio(validation_count, total_count),
     do: Float.round(validation_count / total_count * 100, 2)
 
-  defp on_events_insert({_n, events}) do
+  defp on_events_insert({:ok, %{score_events: {_count, events}}}) do
     version_ids =
       events
       |> Enum.map(&Repo.preload(&1, :score))
@@ -572,11 +648,13 @@ defmodule TdQx.Scores do
     Indexer.reindex(ids: version_ids)
   end
 
-  defp on_event_insert({:ok, %ScoreEvent{score: %Score{} = score}}, true) do
+  defp on_events_insert(_error), do: :noop
+
+  defp on_event_insert({:ok, %{score_event: %ScoreEvent{score: %Score{} = score}}}) do
     Indexer.reindex(ids: score.quality_control_version_id)
   end
 
-  defp on_event_insert({:ok, %ScoreEvent{} = score_event}, true) do
+  defp on_event_insert({:ok, %{score_event: %ScoreEvent{} = score_event}}) do
     score =
       score_event
       |> Repo.preload(:score)
@@ -585,17 +663,15 @@ defmodule TdQx.Scores do
     Indexer.reindex(ids: score.quality_control_version_id)
   end
 
-  defp on_event_insert(_error, _reindex), do: :noop
+  defp on_event_insert(_error), do: :noop
 
   defp on_upserted_score(
-         {:ok, %Score{quality_control_version_id: quality_control_version_id}} =
-           result
+         {:ok, %{score: %Score{quality_control_version_id: quality_control_version_id}}}
        ) do
     Indexer.reindex(ids: quality_control_version_id)
-    result
   end
 
-  defp on_upserted_score(error), do: error
+  defp on_upserted_score(_error), do: :noop
 
   defp on_deleted_score_group(
          {:ok,
@@ -605,7 +681,8 @@ defmodule TdQx.Scores do
           }}
        ) do
     Indexer.reindex([id: score_group_id], :score_groups)
-    on_upserted_score({:ok, score})
+    Indexer.reindex(ids: score.quality_control_version_id)
+    {:ok, score}
   end
 
   defp on_deleted_score_group(
@@ -616,7 +693,8 @@ defmodule TdQx.Scores do
           }}
        ) do
     Indexer.delete([score_group_id], :score_groups)
-    on_upserted_score({:ok, score})
+    Indexer.reindex(ids: score.quality_control_version_id)
+    {:ok, score}
   end
 
   defp on_deleted_score_group(error), do: error

@@ -10,6 +10,7 @@ defmodule TdQx.Expressions.ExpressionValues.FunctionArg do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :name, :string
     embeds_one(:expression, Expression, on_replace: :delete)
