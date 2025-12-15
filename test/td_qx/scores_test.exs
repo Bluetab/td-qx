@@ -3,6 +3,8 @@ defmodule TdQx.ScoresTest do
 
   import TdQx.TestOperators
 
+  alias TdCache.Redix
+  alias TdCache.Redix.Stream
   alias TdCluster.TestHelpers.TdDfMock
   alias TdCore.Search.IndexWorkerMock
   alias TdQx.QualityControls.QualityControlVersion
@@ -10,6 +12,8 @@ defmodule TdQx.ScoresTest do
   alias TdQx.Scores
   alias TdQx.Scores.Score
   alias TdQx.Scores.ScoreEvent
+
+  @audit_stream TdCache.Audit.stream()
 
   describe "list_score_groups/1" do
     test "returns all score_groups" do
@@ -119,7 +123,18 @@ defmodule TdQx.ScoresTest do
     setup do
       IndexWorkerMock.clear()
 
+      # Clean up audit stream before each test
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
+
       :ok
+    end
+
+    defp read_audit_events(stream \\ @audit_stream, count \\ 1) do
+      Stream.read(:redix, stream, count: count, transform: true)
     end
 
     test "creates a score_group and it's scores" do
@@ -164,6 +179,345 @@ defmodule TdQx.ScoresTest do
                {:reindex, :quality_control_versions, [{:ids, quality_control_version_ids}]},
                {:reindex, :score_groups, [{:id, score_group_id}]}
              ]
+    end
+
+    test "publishes audit event for score_group_created" do
+      template_name = "execution_type"
+      created_by = 123
+
+      valid_attrs = %{
+        dynamic_content: %{"param" => %{"value" => "value", "origin" => "user"}},
+        df_type: template_name,
+        created_by: created_by
+      }
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_control_version_ids =
+        for _ <- 1..3,
+            do:
+              insert(:quality_control_version,
+                status: "published",
+                quality_control: build(:quality_control)
+              ).id
+
+      assert {:ok, %{score_group: %{id: score_group_id}}} =
+               Scores.create_score_group(quality_control_version_ids, valid_attrs)
+
+      # Read all events (1 score_group_created + 3 score_created + 3 score_event_created)
+      {:ok, events} = read_audit_events(@audit_stream, 7)
+      assert length(events) == 7
+
+      # Find the score_group_created event
+      group_event = Enum.find(events, &(&1.event == "score_group_created"))
+
+      assert group_event.resource_type == "score_group"
+      assert group_event.resource_id == to_string(score_group_id)
+
+      payload = Jason.decode!(group_event.payload)
+      assert payload["df_type"] == template_name
+      assert payload["created_by"] == created_by
+      assert payload["dynamic_content"] == %{"param" => %{"origin" => "user", "value" => "value"}}
+    end
+
+    test "publishes audit events for all scores created" do
+      template_name = "type"
+      created_by = 456
+
+      valid_attrs = %{
+        dynamic_content: %{},
+        df_type: template_name,
+        created_by: created_by
+      }
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_controls =
+        for _ <- 1..3,
+            do: insert(:quality_control, domain_ids: [1], source_id: 10)
+
+      quality_control_version_ids =
+        Enum.map(quality_controls, fn qc ->
+          insert(:quality_control_version,
+            status: "published",
+            quality_control: qc
+          ).id
+        end)
+
+      assert {:ok, %{score_group: %{id: score_group_id}}} =
+               Scores.create_score_group(quality_control_version_ids, valid_attrs)
+
+      # Read all events (1 score_group_created + 3 score_created + 3 score_event_created)
+      {:ok, events} = read_audit_events(@audit_stream, 7)
+      assert length(events) == 7
+
+      # Find all score_created events
+      score_events = Enum.filter(events, &(&1.event == "score_created"))
+      assert length(score_events) == 3
+
+      # Verify each score event
+      %{scores: scores} = Scores.get_score_group(score_group_id, preload: [scores: :status])
+
+      for event <- score_events do
+        assert event.resource_type == "score"
+        assert event.resource_id in Enum.map(scores, &to_string(&1.id))
+
+        payload = Jason.decode!(event.payload)
+        assert payload["group_id"] == score_group_id
+        assert payload["quality_control_version_id"] in quality_control_version_ids
+        assert payload["quality_control_id"] in Enum.map(quality_controls, & &1.id)
+      end
+    end
+
+    test "publishes audit events for all score_events created" do
+      template_name = "type"
+      created_by = 456
+
+      valid_attrs = %{
+        dynamic_content: %{},
+        df_type: template_name,
+        created_by: created_by
+      }
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_control_versions =
+        for _ <- 1..3,
+            do:
+              insert(:quality_control_version,
+                status: "published",
+                quality_control: build(:quality_control)
+              )
+
+      quality_control_version_ids = Enum.map(quality_control_versions, & &1.id)
+      quality_controls = Enum.map(quality_control_versions, & &1.quality_control)
+
+      assert {:ok, %{score_group: %{id: score_group_id}}} =
+               Scores.create_score_group(quality_control_version_ids, valid_attrs)
+
+      # Read all events (1 score_group_created + 3 score_created + 3 score_event_created)
+      {:ok, events} = read_audit_events(@audit_stream, 7)
+      assert length(events) == 7
+
+      # Find all score_event_created events
+      score_event_events = Enum.filter(events, &(&1.event == "score_event_created"))
+      assert length(score_event_events) == 3
+
+      # Verify each score_event_event
+      %{scores: scores} = Scores.get_score_group(score_group_id, preload: [scores: :status])
+
+      for event <- score_event_events do
+        assert event.resource_type == "score"
+        assert event.resource_id in Enum.map(scores, &to_string(&1.id))
+
+        payload = Jason.decode!(event.payload)
+        assert payload["score_id"] in Enum.map(scores, & &1.id)
+        assert payload["type"] == "PENDING"
+        assert payload["quality_control_id"] in Enum.map(quality_controls, & &1.id)
+        assert payload["quality_control_version_id"] in quality_control_version_ids
+
+        assert payload["domain_ids"] ==
+                 quality_controls |> Enum.flat_map(& &1.domain_ids) |> Enum.uniq()
+      end
+    end
+
+    test "returns error when quality_control_version_ids is empty" do
+      valid_attrs = %{
+        dynamic_content: %{},
+        df_type: "type",
+        created_by: 123
+      }
+
+      assert {:error, :unprocessable_entity} =
+               Scores.create_score_group([], valid_attrs)
+
+      # Verify no audit events were published
+      {:ok, []} = read_audit_events()
+    end
+
+    test "returns error when score_group validation fails" do
+      template_name = "type"
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_control_version_ids = [
+        insert(:quality_control_version, quality_control: build(:quality_control)).id
+      ]
+
+      # Missing required fields
+      invalid_attrs = %{dynamic_content: %{}, df_type: template_name}
+
+      assert {:error, :score_group, %{errors: errors}, %{}} =
+               Scores.create_score_group(quality_control_version_ids, invalid_attrs)
+
+      assert errors[:created_by] == {"can't be blank", [validation: :required]}
+
+      {:ok, []} = read_audit_events()
+    end
+
+    test "returns error when dynamic_content validation fails" do
+      template_name = "type"
+      created_by = 123
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok,
+         %{
+           content: [
+             %{
+               "name" => "field",
+               "fields" => [%{"name" => "required_field", "cardinality" => "1"}]
+             }
+           ]
+         }}
+      )
+
+      quality_control_version_ids = [
+        insert(:quality_control_version, quality_control: build(:quality_control)).id
+      ]
+
+      invalid_attrs = %{
+        dynamic_content: %{},
+        df_type: template_name,
+        created_by: created_by
+      }
+
+      assert {:error, :score_group, %{errors: errors}, %{}} =
+               Scores.create_score_group(quality_control_version_ids, invalid_attrs)
+
+      assert errors[:dynamic_content] ==
+               {"required_field: can't be blank",
+                [required_field: {"can't be blank", [validation: :required]}]}
+
+      # Verify no audit events were published on error
+      {:ok, []} = read_audit_events()
+    end
+
+    test "creates scores with PENDING events" do
+      template_name = "type"
+      created_by = 789
+
+      valid_attrs = %{
+        dynamic_content: %{},
+        df_type: template_name,
+        created_by: created_by
+      }
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_control_version_ids =
+        for _ <- 1..2,
+            do:
+              insert(:quality_control_version,
+                status: "published",
+                quality_control: build(:quality_control)
+              ).id
+
+      assert {:ok, %{score_group: %{id: score_group_id}}} =
+               Scores.create_score_group(quality_control_version_ids, valid_attrs)
+
+      %{scores: scores} = Scores.get_score_group(score_group_id, preload: [scores: :events])
+
+      assert length(scores) == 2
+
+      for score <- scores do
+        assert length(score.events) == 1
+        [event] = score.events
+        assert event.type == "PENDING"
+      end
+    end
+
+    test "calls reindex for quality_control_versions and score_groups" do
+      template_name = "type"
+
+      valid_attrs = %{
+        dynamic_content: %{},
+        df_type: template_name,
+        created_by: 100
+      }
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_control_version_ids =
+        for _ <- 1..3,
+            do:
+              insert(:quality_control_version,
+                status: "published",
+                quality_control: build(:quality_control)
+              ).id
+
+      IndexWorkerMock.clear()
+
+      assert {:ok, %{score_group: %{id: score_group_id}}} =
+               Scores.create_score_group(quality_control_version_ids, valid_attrs)
+
+      assert IndexWorkerMock.calls() == [
+               {:reindex, :quality_control_versions, [{:ids, quality_control_version_ids}]},
+               {:reindex, :score_groups, [{:id, score_group_id}]}
+             ]
+    end
+
+    test "handles single quality_control_version" do
+      template_name = "type"
+
+      valid_attrs = %{
+        dynamic_content: %{},
+        df_type: template_name,
+        created_by: 200
+      }
+
+      TdDfMock.get_template_by_name!(
+        &Mox.expect/4,
+        template_name,
+        {:ok, %{content: []}}
+      )
+
+      quality_control_version_id =
+        insert(:quality_control_version,
+          status: "published",
+          quality_control: build(:quality_control)
+        ).id
+
+      assert {:ok, %{score_group: %{id: score_group_id}}} =
+               Scores.create_score_group([quality_control_version_id], valid_attrs)
+
+      %{scores: scores} = Scores.get_score_group(score_group_id, preload: [scores: :status])
+      assert length(scores) == 1
+
+      # Verify audit events (1 score_group + 1 score)
+      {:ok, events} = read_audit_events(@audit_stream, 2)
+      assert length(events) == 2
+
+      group_events = Enum.filter(events, &(&1.event == "score_group_created"))
+      score_events = Enum.filter(events, &(&1.event == "score_created"))
+
+      assert length(group_events) == 1
+      assert length(score_events) == 1
     end
   end
 
@@ -280,6 +634,16 @@ defmodule TdQx.ScoresTest do
   end
 
   describe "update_scores_quality_control_properties/1" do
+    setup do
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
+
+      :ok
+    end
+
     for status <- QualityControlVersion.valid_statuses() do
       @tag [status: status]
       test "updates quality_control_status for status #{status}", %{status: status} do
@@ -297,6 +661,12 @@ defmodule TdQx.ScoresTest do
         Scores.update_scores_quality_control_properties()
 
         assert %{quality_control_status: ^status} = Scores.get_score(score.id)
+        {:ok, [event]} = read_audit_events(@audit_stream, 1)
+        assert event.event == "score_updated"
+        assert event.resource_type == "score"
+        assert event.resource_id == to_string(score.id)
+        payload = Jason.decode!(event.payload)
+        assert payload["quality_control_status"] == status
       end
     end
 
@@ -325,6 +695,12 @@ defmodule TdQx.ScoresTest do
         Scores.update_scores_quality_control_properties()
 
         assert %{score_type: ^score_type} = Scores.get_score(score.id)
+        {:ok, [event]} = read_audit_events(@audit_stream, 1)
+        assert event.event == "score_updated"
+        assert event.resource_type == "score"
+        assert event.resource_id == to_string(score.id)
+        payload = Jason.decode!(event.payload)
+        assert payload["score_type"] == score_type
       end
     end
 
@@ -372,12 +748,29 @@ defmodule TdQx.ScoresTest do
       assert %{score_type: "ratio", quality_control_status: "draft"} = Scores.get_score(score1.id)
       assert %{score_type: "ratio", quality_control_status: "draft"} = Scores.get_score(score2.id)
       assert %{score_type: nil, quality_control_status: nil} = Scores.get_score(score3.id)
+
+      assert {:ok, events} = read_audit_events(@audit_stream, 3)
+      assert length(events) == 3
+      assert Enum.all?(events, &(&1.event == "score_updated"))
+      assert Enum.all?(events, &(&1.resource_type == "score"))
+
+      for event <- events do
+        payload = Jason.decode!(event.payload)
+        assert payload["score_type"] == "ratio"
+        assert payload["quality_control_status"] == "draft"
+      end
     end
   end
 
   describe "updated_succeeded_score/2" do
     setup do
       IndexWorkerMock.clear()
+
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
 
       :ok
     end
@@ -392,6 +785,7 @@ defmodule TdQx.ScoresTest do
 
       params = %{
         "execution_timestamp" => "2024-11-18 15:34:21.438113Z",
+        "message" => "Execution completed",
         "result" => %{
           "total_count" => [[10]],
           "validation_count" => [[1]]
@@ -401,14 +795,16 @@ defmodule TdQx.ScoresTest do
 
       assert {:ok,
               %{
-                score_content: %{
-                  ratio: %{
-                    total_count: 10,
-                    validation_count: 1
-                  }
-                },
-                execution_timestamp: ~U[2024-11-18 15:34:21.438113Z],
-                details: %{"foo" => "bar"}
+                score: %{
+                  score_content: %{
+                    ratio: %{
+                      total_count: 10,
+                      validation_count: 1
+                    }
+                  },
+                  execution_timestamp: ~U[2024-11-18 15:34:21.438113Z],
+                  details: %{"foo" => "bar"}
+                }
               }} = Scores.updated_succeeded_score(score, params)
 
       assert %{status: "SUCCEEDED"} = Scores.get_score(score.id, preload: :status)
@@ -416,6 +812,25 @@ defmodule TdQx.ScoresTest do
       assert IndexWorkerMock.calls() == [
                {:reindex, :quality_control_versions, [ids: quality_control_version_id]}
              ]
+
+      {:ok, events} = read_audit_events(@audit_stream, 2)
+      assert length(events) == 2
+
+      event = Enum.find(events, &(&1.event == "score_status_updated"))
+      assert event.event == "score_status_updated"
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score.id)
+      payload = Jason.decode!(event.payload)
+      assert payload["status"] == "succeeded"
+      assert payload["latest_event_message"] == "Execution completed"
+
+      event = Enum.find(events, &(&1.event == "score_event_created"))
+      payload = Jason.decode!(event.payload)
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score.id)
+      assert payload["score_id"] == score.id
+      assert payload["type"] == "SUCCEEDED"
+      assert payload["message"] == "Execution completed"
     end
 
     test "invalid params" do
@@ -429,7 +844,8 @@ defmodule TdQx.ScoresTest do
         }
       }
 
-      assert {:error, %{errors: errors}} = Scores.updated_succeeded_score(score, params)
+      assert {:error, :score, %{errors: errors}, %{}} =
+               Scores.updated_succeeded_score(score, params)
 
       assert [
                execution_timestamp: {"can't be blank", [validation: :required]},
@@ -442,26 +858,37 @@ defmodule TdQx.ScoresTest do
     setup do
       IndexWorkerMock.clear()
 
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
+
       :ok
     end
 
     test "updates score and set status as FAILED" do
       %{id: group_id} = group = insert(:score_group)
 
-      %{quality_control_version_id: quality_control_version_id} =
+      %{quality_control_version: quality_control_version} =
         score = insert(:score, score_type: "ratio", group_id: group_id, group: group)
+
+      quality_control_version_id = quality_control_version.id
 
       insert(:score_event, type: "STARTED", score: score)
 
       params = %{
         "execution_timestamp" => "2024-11-18 15:34:21.438113Z",
-        "details" => %{"foo" => "bar"}
+        "details" => %{"foo" => "bar"},
+        "message" => "Execution completed"
       }
 
       assert {:ok,
               %{
-                execution_timestamp: ~U[2024-11-18 15:34:21.438113Z],
-                details: %{"foo" => "bar"}
+                score: %{
+                  execution_timestamp: ~U[2024-11-18 15:34:21.438113Z],
+                  details: %{"foo" => "bar"}
+                }
               }} = Scores.updated_failed_score(score, params)
 
       assert %{status: "FAILED"} = Scores.get_score(score.id, preload: :status)
@@ -469,6 +896,37 @@ defmodule TdQx.ScoresTest do
       assert IndexWorkerMock.calls() == [
                {:reindex, :quality_control_versions, [ids: quality_control_version_id]}
              ]
+
+      {:ok, events} = read_audit_events(@audit_stream, 2)
+      assert length(events) == 2
+
+      event = Enum.find(events, &(&1.event == "score_status_updated"))
+      assert event.event == "score_status_updated"
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score.id)
+      payload = Jason.decode!(event.payload)
+      assert payload["status"] == "failed"
+      assert payload["latest_event_message"] == "Execution completed"
+      assert payload["name"] == quality_control_version.name
+      assert payload["control_mode"] == quality_control_version.control_mode
+
+      assert payload["score_criteria"] == %{
+               "deviation" => nil,
+               "count" => nil,
+               "error_count" => nil,
+               "percentage" => %{
+                 "goal" => 90.0,
+                 "minimum" => 75.0
+               }
+             }
+
+      event = Enum.find(events, &(&1.event == "score_event_created"))
+      payload = Jason.decode!(event.payload)
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score.id)
+      assert payload["score_id"] == score.id
+      assert payload["type"] == "FAILED"
+      assert payload["message"] == "Execution completed"
     end
 
     test "invalid params" do
@@ -481,7 +939,7 @@ defmodule TdQx.ScoresTest do
           "execution_timestamp" => nil
         }
 
-      assert {:error, %{errors: errors}} = Scores.updated_failed_score(score, params)
+      assert {:error, :score, %{errors: errors}, %{}} = Scores.updated_failed_score(score, params)
 
       assert [
                execution_timestamp: {"can't be blank", [validation: :required]}
@@ -492,6 +950,12 @@ defmodule TdQx.ScoresTest do
   describe "delete_score/1" do
     setup do
       IndexWorkerMock.clear()
+
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
 
       :ok
     end
@@ -512,6 +976,19 @@ defmodule TdQx.ScoresTest do
                {:delete, :score_groups, [score_group_id]},
                {:reindex, :quality_control_versions, [ids: score.quality_control_version_id]}
              ]
+
+      {:ok, events} = read_audit_events(@audit_stream, 2)
+      assert length(events) == 2
+
+      event = Enum.find(events, &(&1.event == "score_deleted"))
+      assert event.event == "score_deleted"
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score.id)
+
+      event = Enum.find(events, &(&1.event == "score_group_deleted"))
+      assert event.event == "score_group_deleted"
+      assert event.resource_type == "score_group"
+      assert event.resource_id == to_string(score_group_id)
     end
 
     test "deletes a score of a group with more scores and the group is not deleted" do
@@ -533,6 +1010,16 @@ defmodule TdQx.ScoresTest do
                {:reindex, :score_groups, [{:id, score_group_id}]},
                {:reindex, :quality_control_versions, [ids: score1.quality_control_version_id]}
              ]
+
+      {:ok, events} = read_audit_events(@audit_stream, 2)
+      assert length(events) == 1
+
+      event = Enum.find(events, &(&1.event == "score_deleted"))
+      assert event.event == "score_deleted"
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score1.id)
+
+      refute Enum.find(events, &(&1.event == "score_group_deleted"))
     end
 
     test "deletes score's events" do
@@ -552,6 +1039,13 @@ defmodule TdQx.ScoresTest do
   describe "insert_event_for_scores/2" do
     setup do
       IndexWorkerMock.clear()
+
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
+
       :ok
     end
 
@@ -568,16 +1062,34 @@ defmodule TdQx.ScoresTest do
       assert scores = Scores.list_scores(preload: :status)
       assert Enum.all?(scores, &(&1.status == "QUEUED"))
 
-      assert IndexWorkerMock.calls() == [
-               {:reindex, :quality_control_versions,
-                [ids: Enum.map(scores, & &1.quality_control_version_id)]}
-             ]
+      assert [{:reindex, :quality_control_versions, [ids: ids]}] = IndexWorkerMock.calls()
+      assert Enum.sort(ids) == scores |> Enum.map(& &1.quality_control_version_id) |> Enum.sort()
+
+      {:ok, events} = read_audit_events(@audit_stream, 3)
+      assert length(events) == 3
+
+      events = Enum.filter(events, &(&1.event == "score_event_created"))
+      assert length(events) == 3
+
+      for event <- events do
+        assert event.resource_type == "score"
+        assert event.resource_id in Enum.map(scores, &to_string(&1.id))
+        payload = Jason.decode!(event.payload)
+        assert payload["type"] == "QUEUED"
+      end
     end
   end
 
   describe "create_score_event/1" do
     setup do
       IndexWorkerMock.clear()
+
+      Redix.command!(["DEL", @audit_stream])
+
+      on_exit(fn ->
+        Redix.command!(["DEL", @audit_stream])
+      end)
+
       :ok
     end
 
@@ -593,7 +1105,7 @@ defmodule TdQx.ScoresTest do
         message: "some message"
       }
 
-      assert {:ok, score_event} = Scores.create_score_event(params)
+      assert {:ok, %{score_event: score_event}} = Scores.create_score_event(params)
 
       assert %{
                score_id: ^score_id,
@@ -605,6 +1117,19 @@ defmodule TdQx.ScoresTest do
       assert IndexWorkerMock.calls() == [
                {:reindex, :quality_control_versions, [ids: quality_control_version_id]}
              ]
+
+      {:ok, events} = read_audit_events(@audit_stream, 1)
+      assert length(events) == 1
+
+      event = Enum.find(events, &(&1.event == "score_event_created"))
+      assert event.event == "score_event_created"
+      assert event.resource_type == "score"
+      assert event.resource_id == to_string(score_id)
+      payload = Jason.decode!(event.payload)
+      assert payload["score_id"] == score_id
+      assert payload["type"] == "PENDING"
+      assert payload["ttl"] == DateTime.to_iso8601(ttl)
+      assert payload["message"] == "some message"
     end
 
     test "renders error for invalid params" do
@@ -615,13 +1140,15 @@ defmodule TdQx.ScoresTest do
         message: nil
       }
 
-      assert {:error,
+      assert {:error, :score_event,
               %{
                 errors: [
                   type: {"can't be blank", [validation: :required]},
                   score_id: {"can't be blank", [validation: :required]}
                 ]
-              }} = Scores.create_score_event(params)
+              }, %{}} = Scores.create_score_event(params)
+
+      assert {:ok, []} == read_audit_events(@audit_stream, 1)
     end
 
     test "validate type" do
@@ -632,7 +1159,7 @@ defmodule TdQx.ScoresTest do
         type: "invalid_type"
       }
 
-      assert {:error,
+      assert {:error, :score_event,
               %{
                 errors: [
                   type:
@@ -651,7 +1178,9 @@ defmodule TdQx.ScoresTest do
                        ]
                      ]}
                 ]
-              }} = Scores.create_score_event(params)
+              }, %{}} = Scores.create_score_event(params)
+
+      assert {:ok, []} == read_audit_events(@audit_stream, 1)
     end
 
     test "validate score foreign key" do
@@ -660,14 +1189,16 @@ defmodule TdQx.ScoresTest do
         type: "TIMEOUT"
       }
 
-      assert {:error,
+      assert {:error, :score_event,
               %{
                 errors: [
                   score_id:
                     {"does not exist",
                      [constraint: :foreign, constraint_name: "score_events_score_id_fkey"]}
                 ]
-              }} = Scores.create_score_event(params)
+              }, %{}} = Scores.create_score_event(params)
+
+      assert {:ok, []} == read_audit_events(@audit_stream, 1)
     end
   end
 end

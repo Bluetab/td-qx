@@ -8,6 +8,7 @@ defmodule TdQx.Scores.ScoreContents.Ratio do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :total_count, :integer
     field :validation_count, :integer

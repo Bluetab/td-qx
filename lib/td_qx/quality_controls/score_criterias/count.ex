@@ -8,6 +8,7 @@ defmodule TdQx.QualityControls.ScoreCriterias.Count do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :goal, :integer
     field :maximum, :integer

@@ -43,7 +43,7 @@ defmodule TdQxWeb.ScoreGroupController do
          %{results: quality_controls} <- Search.search(search_params, claims),
          version_ids <- Enum.map(quality_controls, & &1["id"]),
          {:ok, %{score_group: %{id: id}}} <-
-           Scores.create_score_group(version_ids, score_group_params) do
+           Scores.create_score_group(version_ids, score_group_params, user_id: user_id) do
       score_group = Scores.get_score_group(id)
 
       conn

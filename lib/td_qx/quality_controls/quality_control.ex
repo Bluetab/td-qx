@@ -7,6 +7,7 @@ defmodule TdQx.QualityControls.QualityControl do
 
   alias TdQx.QualityControls.QualityControlVersion
 
+  @derive Jason.Encoder
   schema "quality_controls" do
     field :domain_ids, {:array, :integer}
     field :domains, {:array, :map}, virtual: true

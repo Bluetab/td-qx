@@ -66,9 +66,9 @@ defmodule TdQxWeb.ScoreController do
          params <- maybe_add_ids_to_params(params, results),
          {:ok, opts} <- cast_params(:fetch_pending, params) do
       scores = Scores.list_scores(opts)
-
+      opts = Keyword.put(opts, :user_id, claims.user_id)
       Scores.update_scores_quality_control_properties(opts)
-      Scores.insert_event_for_scores(scores, %{type: "QUEUED"})
+      Scores.insert_event_for_scores(scores, %{type: "QUEUED"}, user_id: claims.user_id)
 
       enriched_scores = QualityControlTransformer.enrich_scores_queries(scores)
 
@@ -93,7 +93,8 @@ defmodule TdQxWeb.ScoreController do
 
     with :ok <- Bodyguard.permit(Scores, :success, claims),
          {:score, %Score{} = score} <- {:score, Scores.get_score(score_id)},
-         {:ok, score} <- Scores.updated_succeeded_score(score, params) do
+         {:ok, %{score: score}} <-
+           Scores.updated_succeeded_score(score, params, user_id: claims.user_id) do
       render(conn, :show, score: score)
     else
       {:score, _} -> {:error, :not_found}
@@ -106,7 +107,8 @@ defmodule TdQxWeb.ScoreController do
 
     with :ok <- Bodyguard.permit(Scores, :fail, claims),
          {:score, %Score{} = score} <- {:score, Scores.get_score(score_id)},
-         {:ok, score} <- Scores.updated_failed_score(score, params) do
+         {:ok, %{score: score}} <-
+           Scores.updated_failed_score(score, params, user_id: claims.user_id) do
       render(conn, :show, score: score)
     else
       {:score, _} -> {:error, :not_found}
@@ -129,7 +131,7 @@ defmodule TdQxWeb.ScoreController do
          {:valid_status, true} <-
            {:valid_status, score.status in ["PENDING", "SUCCEEDED", "FAILED"]},
          :ok <- Bodyguard.permit(Scores, :delete, claims, quality_control),
-         {:ok, %Score{}} <- Scores.delete_score(score) do
+         {:ok, %Score{}} <- Scores.delete_score(score, user_id: claims.user_id) do
       send_resp(conn, :no_content, "")
     else
       {:score, _} -> {:error, :not_found}

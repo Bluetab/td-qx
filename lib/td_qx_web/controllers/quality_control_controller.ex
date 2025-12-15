@@ -35,7 +35,9 @@ defmodule TdQxWeb.QualityControlController do
     with :ok <- Bodyguard.permit(QualityControls, :create, claims, {domain_ids, status}),
          {:ok,
           %QualityControlVersion{quality_control_id: quality_control_id} = quality_control_version} <-
-           QualityControlWorkflow.create_quality_control(quality_control_params) do
+           QualityControlWorkflow.create_quality_control(quality_control_params,
+             user_id: claims.user_id
+           ) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/quality_controls/#{quality_control_id}")
@@ -62,7 +64,8 @@ defmodule TdQxWeb.QualityControlController do
          {:ok, quality_control_version} <-
            QualityControlWorkflow.create_quality_control_draft(
              quality_control,
-             quality_control_params
+             quality_control_params,
+             user_id: claims.user_id
            ) do
       conn
       |> put_status(:created)
@@ -87,7 +90,8 @@ defmodule TdQxWeb.QualityControlController do
          {:ok, quality_control_version} <-
            QualityControlWorkflow.update_quality_control_draft(
              quality_control_version,
-             quality_control_params
+             quality_control_params,
+             user_id: claims.user_id
            ) do
       render(conn, :show, quality_control: quality_control_version)
     end
@@ -108,7 +112,8 @@ defmodule TdQxWeb.QualityControlController do
          {:ok, _} <-
            QualityControls.update_quality_control(
              quality_control,
-             quality_control_params
+             quality_control_params,
+             user_id: claims.user_id
            ) do
       render(conn, :show,
         quality_control: QualityControls.get_quality_control!(quality_control_id)
@@ -127,7 +132,9 @@ defmodule TdQxWeb.QualityControlController do
 
     with :ok <- Bodyguard.permit(QualityControls, action, claims, quality_control),
          {:ok, quality_control_version} <-
-           QualityControlWorkflow.update_quality_control_status(quality_control, action) do
+           QualityControlWorkflow.update_quality_control_status(quality_control, action,
+             user_id: claims.user_id
+           ) do
       render(conn, :show, quality_control: quality_control_version)
     end
   end

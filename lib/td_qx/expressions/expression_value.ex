@@ -14,6 +14,7 @@ defmodule TdQx.Expressions.ExpressionValue do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     embeds_one(:constant, Constant, on_replace: :delete)
     embeds_one(:field, Field, on_replace: :delete)

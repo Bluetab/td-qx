@@ -40,6 +40,7 @@ defmodule TdQx.QualityControls.QualityControlVersion do
 
   @valid_control_modes ["deviation", "percentage", "count", "error_count"]
 
+  @derive Jason.Encoder
   schema "quality_control_versions" do
     field :name, :string
     field :status, :string, default: "draft"

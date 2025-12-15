@@ -11,6 +11,7 @@ defmodule TdQx.QualityControls.ControlProperties do
   alias TdQx.QualityControls.ControlProperties.Ratio
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     embeds_one(:count, Count, on_replace: :delete)
     embeds_one(:ratio, Ratio, on_replace: :delete)
