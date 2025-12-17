@@ -104,13 +104,24 @@ defmodule TdQx.QualityControlWorkflow do
       |> QualityControlVersion.update_draft_changeset(params)
 
     Multi.new()
+    |> Multi.run(:score_criteria, fn _, _ ->
+      {:ok, quality_control_version.score_criteria}
+    end)
+    |> Multi.run(:control_mode, fn _, _ ->
+      {:ok, quality_control_version.control_mode}
+    end)
     |> Multi.update(:quality_control_version, changeset)
-    |> Multi.run(:audit, fn _, %{quality_control_version: quality_control_version} ->
+    |> Multi.run(:audit, fn _,
+                            %{
+                              score_criteria: score_criteria,
+                              control_mode: control_mode,
+                              quality_control_version: quality_control_version
+                            } ->
       Audit.publish(
         :quality_control_version_draft_updated,
         quality_control_version,
         user_id,
-        %{changes: changeset.changes}
+        %{changes: changeset.changes, score_criteria: score_criteria, control_mode: control_mode}
       )
     end)
     |> Repo.transaction()
