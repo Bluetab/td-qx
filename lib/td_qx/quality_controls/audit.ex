@@ -23,7 +23,8 @@ defmodule TdQx.QualityControls.Audit do
     :control_mode,
     :quality_control_id,
     :df_type,
-    :dynamic_content
+    :dynamic_content,
+    :score_criteria
   ]
 
   def publish(_event_type, _control_or_version, _user_id, _metadata \\ %{})
@@ -76,6 +77,7 @@ defmodule TdQx.QualityControls.Audit do
     version
     |> payload_from_version()
     |> Message.apply_metadata(metadata, @quality_control_version_fields)
+    |> maybe_add_score_criteria_changes(metadata)
   end
 
   defp get_resource_id(%QualityControl{id: id}), do: id
@@ -107,6 +109,34 @@ defmodule TdQx.QualityControls.Audit do
     quality_control
     |> payload_from_quality_control()
     |> Map.merge(version_data)
+  end
+
+  defp maybe_add_score_criteria_changes(%{changes: %{control_mode: _}} = payload, _metadata) do
+    Map.delete(payload, :score_criteria)
+  end
+
+  defp maybe_add_score_criteria_changes(
+         %{changes: %{score_criteria: score_criteria_changes} = changes} = payload,
+         %{score_criteria: current_score_criteria, control_mode: current_control_mode}
+       ) do
+    control_mode_key = :"#{current_control_mode}"
+    current_data = Map.from_struct(Map.get(current_score_criteria, control_mode_key))
+    new_data = Map.get(score_criteria_changes, control_mode_key)
+
+    updated_changes =
+      if current_data == new_data do
+        Map.delete(changes, :score_criteria)
+      else
+        changes
+      end
+
+    payload
+    |> Map.put(:changes, updated_changes)
+    |> Map.delete(:score_criteria)
+  end
+
+  defp maybe_add_score_criteria_changes(payload, _metadata) do
+    Map.delete(payload, :score_criteria)
   end
 
   defp enrich_domain_ids(%{domain_ids: domain_ids} = payload) when is_list(domain_ids) do
