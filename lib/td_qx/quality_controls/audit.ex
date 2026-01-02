@@ -55,6 +55,26 @@ defmodule TdQx.QualityControls.Audit do
     |> Audit.publish_all()
   end
 
+  def enrich_domain_ids(%{domain_ids: domain_ids} = payload) when is_list(domain_ids) do
+    current_hierarchical_domain_ids =
+      Map.new(domain_ids, fn domain_id ->
+        {domain_id, TaxonomyCache.reaching_domain_ids(domain_id)}
+      end)
+
+    hierarchical_domain_ids =
+      current_hierarchical_domain_ids
+      |> Map.values()
+      |> List.flatten()
+      |> Enum.uniq()
+
+    payload
+    |> Map.put(:domain_id, List.first(domain_ids))
+    |> Map.put(:domain_ids, hierarchical_domain_ids)
+    |> Map.put(:current_domains_ids, current_hierarchical_domain_ids)
+  end
+
+  def enrich_domain_ids(payload), do: payload
+
   defp build_event(event_type, entity, user_id, metadata) do
     %{
       event: event_type,
@@ -138,19 +158,6 @@ defmodule TdQx.QualityControls.Audit do
   defp maybe_add_score_criteria_changes(payload, _metadata) do
     Map.delete(payload, :score_criteria)
   end
-
-  defp enrich_domain_ids(%{domain_ids: domain_ids} = payload) when is_list(domain_ids) do
-    hierarchical_domain_ids =
-      domain_ids
-      |> TaxonomyCache.reaching_domain_ids()
-      |> Enum.uniq()
-
-    payload
-    |> Map.put(:domain_id, List.first(domain_ids))
-    |> Map.put(:domain_ids, hierarchical_domain_ids)
-  end
-
-  defp enrich_domain_ids(payload), do: payload
 
   defp maybe_enrich_domains_names_metadata(%{changes: %{domain_ids: domain_ids}} = payload) do
     domains = enrich_domains_names(domain_ids)

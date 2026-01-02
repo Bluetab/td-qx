@@ -280,6 +280,7 @@ defmodule TdQx.ScoresTest do
     test "publishes audit events for all score_events created" do
       template_name = "type"
       created_by = 456
+      %{id: domain_id_1} = CacheHelpers.insert_domain(%{id: 1, parent_id: nil})
 
       valid_attrs = %{
         dynamic_content: %{},
@@ -298,7 +299,7 @@ defmodule TdQx.ScoresTest do
             do:
               insert(:quality_control_version,
                 status: "published",
-                quality_control: build(:quality_control)
+                quality_control: build(:quality_control, domain_ids: [domain_id_1])
               )
 
       quality_control_version_ids = Enum.map(quality_control_versions, & &1.id)

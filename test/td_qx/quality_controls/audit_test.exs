@@ -48,6 +48,7 @@ defmodule TdQx.QualityControls.AuditTest do
       assert payload["source_id"] == 10
       assert payload["domain_ids"] == [1, 2]
       assert payload["active"] == true
+      assert payload["current_domains_ids"] == %{"1" => [1], "2" => [2, 1]}
     end
 
     test "reduces payload to changes when metadata includes changes" do
