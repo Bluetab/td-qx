@@ -5,6 +5,7 @@
 ### Added
 
 - [TD-7657] Audit messages for `quality_controls` and `score` related entities
+- [TD-7682] Enrich audit payload with hierarchical domain IDs and current domains mapping
 
 ## [7.14.0] 2025-12-10
 

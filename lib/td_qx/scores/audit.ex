@@ -6,6 +6,7 @@ defmodule TdQx.Scores.Audit do
   alias TdCache.Audit
   alias TdQx.Audit.Message
   alias TdQx.QualityControls
+  alias TdQx.QualityControls.Audit, as: QualityControlsAudit
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Scores
@@ -35,7 +36,9 @@ defmodule TdQx.Scores.Audit do
     :control_mode,
     :score_criteria,
     :version,
-    :quality_control_id
+    :quality_control_id,
+    :domain_ids,
+    :current_domains_ids
   ]
   @score_event_fields [
     :type,
@@ -132,6 +135,7 @@ defmodule TdQx.Scores.Audit do
     |> Map.put(:domain_ids, version.quality_control.domain_ids)
     |> Map.put(:name, version.name)
     |> Map.put(:control_mode, version.control_mode)
+    |> QualityControlsAudit.enrich_domain_ids()
   end
 
   defp enrich(

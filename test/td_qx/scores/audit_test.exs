@@ -44,7 +44,11 @@ defmodule TdQx.Scores.AuditTest do
     end
 
     test "publishes audit event for Score" do
-      quality_control = insert(:quality_control, domain_ids: [1, 2], source_id: 10)
+      %{id: domain_id_1} = CacheHelpers.insert_domain(%{id: 1, parent_id: nil})
+      %{id: domain_id_2} = CacheHelpers.insert_domain(%{id: 2, parent_id: domain_id_1})
+
+      quality_control =
+        insert(:quality_control, domain_ids: [domain_id_1, domain_id_2], source_id: 10)
 
       version =
         insert(:quality_control_version,
@@ -88,6 +92,8 @@ defmodule TdQx.Scores.AuditTest do
       assert payload["quality_control_version_id"] == version.id
       assert payload["quality_control_id"] == quality_control.id
       assert payload["details"] == %{"key" => "value"}
+      assert payload["domain_ids"] == [domain_id_1, domain_id_2]
+      assert payload["current_domains_ids"] == %{"1" => [1], "2" => [2, 1]}
 
       assert payload["score_content"] == %{
                "count" => nil,
@@ -102,7 +108,12 @@ defmodule TdQx.Scores.AuditTest do
     end
 
     test "publishes audit event for ScoreEvent" do
-      quality_control = insert(:quality_control)
+      %{id: domain_id_1} = CacheHelpers.insert_domain(%{id: 1, parent_id: nil})
+      %{id: domain_id_2} = CacheHelpers.insert_domain(%{id: 2, parent_id: domain_id_1})
+
+      quality_control =
+        insert(:quality_control, domain_ids: [domain_id_1, domain_id_2])
+
       version = insert(:quality_control_version, quality_control: quality_control)
       score = insert(:score, quality_control_version: version)
 
@@ -128,6 +139,7 @@ defmodule TdQx.Scores.AuditTest do
       assert payload["score_id"] == score.id
       assert payload["type"] == "SUCCEEDED"
       assert payload["message"] == "Execution completed"
+      assert payload["domain_ids"] == [domain_id_1, domain_id_2]
     end
 
     test "enriches Score payload with quality_control_id" do
