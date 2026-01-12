@@ -13,6 +13,7 @@ defmodule TdQx.QualityControls.ScoreCriteria do
   alias TdQx.QualityControls.ScoreCriterias.Percentage
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     embeds_one :deviation, Deviation, on_replace: :delete
     embeds_one :count, Count, on_replace: :delete

@@ -10,6 +10,7 @@ defmodule TdQx.Expressions.ExpressionValues.Field do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :id, :integer
     field :type, :string

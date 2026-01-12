@@ -8,6 +8,7 @@ defmodule TdQx.QualityControlWorkflow do
 
   alias Ecto.Multi
   alias TdQx.QualityControls
+  alias TdQx.QualityControls.Audit
   alias TdQx.QualityControls.QualityControl
   alias TdQx.QualityControls.QualityControlVersion
   alias TdQx.Repo
@@ -15,21 +16,31 @@ defmodule TdQx.QualityControlWorkflow do
 
   @valid_execution_statuses ~w(draft pending_approval published)
 
-  def create_quality_control(params) do
+  def create_quality_control(params, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
+
     Multi.new()
     |> Multi.run(:quality_control, fn _, _ -> QualityControls.create_quality_control(params) end)
     |> Multi.run(:quality_control_version, fn _, %{quality_control: quality_control} ->
       QualityControls.create_quality_control_version(quality_control, params)
     end)
+    |> Multi.run(:audit, fn _, %{quality_control_version: quality_control_version} ->
+      Audit.publish(:quality_control_created, quality_control_version, user_id)
+    end)
     |> Repo.transaction()
     |> reindex_quality_control()
   end
 
+  def create_quality_control_draft(quality_control, params, opts \\ [])
+
   def create_quality_control_draft(
         %{latest_version: %{status: "published", version: version} = latest_version} =
           quality_control,
-        params
+        params,
+        opts
       ) do
+    user_id = Keyword.get(opts, :user_id)
+
     Multi.new()
     |> Multi.run(:maybe_replace_published, fn _, _ ->
       maybe_replace_published(latest_version, params)
@@ -37,11 +48,14 @@ defmodule TdQx.QualityControlWorkflow do
     |> Multi.run(:quality_control_version, fn _, _ ->
       QualityControls.create_quality_control_version(quality_control, params, version + 1)
     end)
+    |> Multi.run(:audit, fn _, %{quality_control_version: quality_control_version} ->
+      Audit.publish(:quality_control_version_draft_created, quality_control_version, user_id)
+    end)
     |> Repo.transaction()
     |> reindex_quality_control()
   end
 
-  def create_quality_control_draft(_, _),
+  def create_quality_control_draft(_, _, _),
     do: {:error, :invalid_action, "create_draft not published"}
 
   defp maybe_replace_published(latest_version, %{"status" => "published"}),
@@ -52,7 +66,9 @@ defmodule TdQx.QualityControlWorkflow do
 
   defp maybe_replace_published(_, _), do: {:ok, nil}
 
-  def update_quality_control_status(quality_control, action) do
+  def update_quality_control_status(quality_control, action, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id)
+
     quality_control
     |> changesets_for_action(action)
     |> case do
@@ -60,6 +76,13 @@ defmodule TdQx.QualityControlWorkflow do
         changesets
         |> Enum.map(&validate_publish_changeset(&1, action))
         |> Enum.reduce(Multi.new(), &handle_multi_changeset/2)
+        |> Multi.run(:audit, fn _repo, transaction_results ->
+          transaction_results
+          |> Map.values()
+          |> Repo.preload([:quality_control])
+          |> Enum.map(&{:quality_control_version_status_updated, &1})
+          |> Audit.publish_all(user_id, %{action: action})
+        end)
         |> Repo.transaction()
         |> handle_multi_result()
         |> preload_quality_control()
@@ -70,18 +93,42 @@ defmodule TdQx.QualityControlWorkflow do
     end
   end
 
-  def update_quality_control_draft(%{status: "draft"} = quality_control_version, params) do
-    quality_control_version
-    |> QualityControlVersion.update_draft_changeset(params)
-    |> Repo.update()
-    |> case do
-      {:ok, qcv} -> {:ok, Repo.preload(qcv, :quality_control)}
-      error -> error
-    end
+  def update_quality_control_draft(_quality_control_version, _params, opts \\ [])
+
+  def update_quality_control_draft(%{status: "draft"} = quality_control_version, params, opts) do
+    user_id = Keyword.get(opts, :user_id)
+
+    changeset =
+      quality_control_version
+      |> Repo.preload(:quality_control)
+      |> QualityControlVersion.update_draft_changeset(params)
+
+    Multi.new()
+    |> Multi.run(:score_criteria, fn _, _ ->
+      {:ok, quality_control_version.score_criteria}
+    end)
+    |> Multi.run(:control_mode, fn _, _ ->
+      {:ok, quality_control_version.control_mode}
+    end)
+    |> Multi.update(:quality_control_version, changeset)
+    |> Multi.run(:audit, fn _,
+                            %{
+                              score_criteria: score_criteria,
+                              control_mode: control_mode,
+                              quality_control_version: quality_control_version
+                            } ->
+      Audit.publish(
+        :quality_control_version_draft_updated,
+        quality_control_version,
+        user_id,
+        %{changes: changeset.changes, score_criteria: score_criteria, control_mode: control_mode}
+      )
+    end)
+    |> Repo.transaction()
     |> reindex_quality_control()
   end
 
-  def update_quality_control_draft(_, _),
+  def update_quality_control_draft(_, _, _),
     do: {:error, :invalid_action, "update_draft not a draft"}
 
   defp handle_multi_changeset({:update, %{changes: %{status: status}} = changeset}, multi),
@@ -264,11 +311,6 @@ defmodule TdQx.QualityControlWorkflow do
       ) do
     Indexer.reindex(quality_control_ids: [quality_control_id])
     {:ok, quality_control_version}
-  end
-
-  def reindex_quality_control({:ok, %QualityControl{id: id} = quality_control}) do
-    Indexer.reindex(quality_control_ids: [id])
-    {:ok, quality_control}
   end
 
   def reindex_quality_control({:ok, %{quality_control_version: quality_control_version}}) do

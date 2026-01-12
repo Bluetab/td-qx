@@ -8,6 +8,7 @@ defmodule TdQx.QualityControls.ScoreCriterias.Deviation do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field :goal, :float
     field :maximum, :float

@@ -10,6 +10,7 @@ defmodule TdQx.Expressions.Clause do
   import Ecto.Changeset
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     embeds_many(:expressions, Expression, on_replace: :delete)
   end

@@ -13,6 +13,7 @@ defmodule TdQx.DataViews.Resource do
   @valid_types ~w|data_structure reference_dataset data_view|
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     field(:id, :integer)
     field(:type, :string)
