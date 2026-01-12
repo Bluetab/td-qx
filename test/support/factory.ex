@@ -550,7 +550,7 @@ defmodule TdQx.Factory do
   def score_content_factory(%{count: %{} = count}),
     do: %ScoreContent{count: count}
 
-  def score_content_factory(_), do: %ScoreContent{ratio: build(:score_content_ratio_factory)}
+  def score_content_factory(_), do: %ScoreContent{ratio: build(:score_content_ratio)}
 
   def score_content_ratio_factory(attrs) do
     %ScoreContents.Ratio{

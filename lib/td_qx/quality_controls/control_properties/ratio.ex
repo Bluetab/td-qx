@@ -10,6 +10,7 @@ defmodule TdQx.QualityControls.ControlProperties.Ratio do
   alias TdQx.Expressions.Clause
 
   @primary_key false
+  @derive Jason.Encoder
   embedded_schema do
     embeds_one(:resource, Resource, on_replace: :delete)
     embeds_many(:validation, Clause, on_replace: :delete)

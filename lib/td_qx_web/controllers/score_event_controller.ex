@@ -12,7 +12,8 @@ defmodule TdQxWeb.ScoreEventController do
     params = Map.put(event_params, "score_id", score_id)
 
     with :ok <- Bodyguard.permit(Scores, :create, claims, ScoreEvent),
-         {:ok, event} <- Scores.create_score_event(params) do
+         {:ok, %{score_event: event}} <-
+           Scores.create_score_event(params, user_id: claims.user_id) do
       conn
       |> put_status(:created)
       |> render(:show, score_event: event)
