@@ -1054,7 +1054,25 @@ defmodule TdQxWeb.QualityControlControllerTest do
       %{quality_control_id: qc_id} =
         insert(:quality_control_version, version: 1, quality_control: insert(:quality_control))
 
-      control_properties = string_params_for(:cp_ratio_params_for)
+      segmentation = string_params_for(:segmentation_params_for)
+
+      function_params =
+        get_in(segmentation, [
+          "properties",
+          "aggregate_fields",
+          Access.at(0),
+          "expression",
+          "value"
+        ])
+
+      insert(:function,
+        class: "aggregator",
+        name: function_params["name"],
+        type: function_params["type"]
+      )
+
+      control_properties =
+        string_params_for(:cp_ratio_params_for, segmentation: segmentation)
 
       params = %{
         "name" => "new name",

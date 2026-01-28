@@ -575,4 +575,14 @@ defmodule TdQx.Factory do
     }
     |> merge_attributes(attrs)
   end
+
+  def segmentation_params_for_factory(attrs) do
+    %Queryable{
+      id: sequence(:queryable_id, & &1),
+      type: "group_by",
+      alias: sequence(:data_view_alias, &"alias_#{&1}"),
+      properties: build(:qp_group_by_params_for)
+    }
+    |> merge_attributes(attrs)
+  end
 end

@@ -275,6 +275,280 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
              } =
                errors_on(changeset)
     end
+
+    test "valid control_properties with segmentation for count control_mode" do
+      quality_control = insert(:quality_control)
+
+      segmentation = segmentation_params_for()
+
+      params = %{
+        name: "name",
+        control_mode: "count",
+        control_properties: %{
+          errors_resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          segmentation: segmentation
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
+
+    test "valid control_properties with segmentation for percentage control_mode" do
+      quality_control = insert(:quality_control)
+
+      segmentation = segmentation_params_for()
+
+      params = %{
+        name: "name",
+        control_mode: "percentage",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)],
+          segmentation: segmentation
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
+
+    test "valid control_properties with segmentation for deviation control_mode" do
+      quality_control = insert(:quality_control)
+
+      segmentation = segmentation_params_for()
+
+      params = %{
+        name: "name",
+        control_mode: "deviation",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)],
+          segmentation: segmentation
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
+
+    test "valid control_properties with segmentation for error_count control_mode" do
+      quality_control = insert(:quality_control)
+
+      segmentation = segmentation_params_for()
+
+      params = %{
+        name: "name",
+        control_mode: "error_count",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)],
+          segmentation: segmentation
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
+
+    test "validates segmentation must be of type group_by for count control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "count",
+        control_properties: %{
+          errors_resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          segmentation: %{
+            id: 1,
+            type: "from",
+            properties: %{
+              from: %{
+                resource: %{
+                  id: 1,
+                  type: "data_view"
+                }
+              }
+            }
+          }
+        }
+      }
+
+      assert %{valid?: false} =
+               changeset = QualityControlVersion.create_changeset(quality_control, params, 1)
+
+      assert %{
+               control_properties: %{
+                 count: %{
+                   segmentation: %{
+                     type: ["segmentation queryable must be of type 'group_by'"]
+                   }
+                 }
+               }
+             } = errors_on(changeset)
+    end
+
+    test "validates segmentation must be of type group_by for percentage control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "percentage",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)],
+          segmentation: %{
+            id: 1,
+            type: "where",
+            properties: %{
+              where: %{
+                clauses: []
+              }
+            }
+          }
+        }
+      }
+
+      assert %{valid?: false} =
+               changeset = QualityControlVersion.create_changeset(quality_control, params, 1)
+
+      assert %{
+               control_properties: %{
+                 ratio: %{
+                   segmentation: %{
+                     type: ["segmentation queryable must be of type 'group_by'"]
+                   }
+                 }
+               }
+             } = errors_on(changeset)
+    end
+
+    test "validates segmentation must be of type group_by for deviation control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "deviation",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)],
+          segmentation: %{
+            id: 1,
+            type: "select",
+            properties: %{
+              select: %{
+                fields: []
+              }
+            }
+          }
+        }
+      }
+
+      assert %{valid?: false} =
+               changeset = QualityControlVersion.create_changeset(quality_control, params, 1)
+
+      assert %{
+               control_properties: %{
+                 ratio: %{
+                   segmentation: %{
+                     type: ["segmentation queryable must be of type 'group_by'"]
+                   }
+                 }
+               }
+             } = errors_on(changeset)
+    end
+
+    test "validates segmentation must be of type group_by for error_count control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "error_count",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)],
+          segmentation: %{
+            id: 1,
+            type: "join",
+            properties: %{
+              join: %{
+                resource: %{id: 1, type: "data_view"},
+                type: "left",
+                clauses: []
+              }
+            }
+          }
+        }
+      }
+
+      assert %{valid?: false} =
+               changeset = QualityControlVersion.create_changeset(quality_control, params, 1)
+
+      assert %{
+               control_properties: %{
+                 ratio: %{
+                   segmentation: %{
+                     type: ["segmentation queryable must be of type 'group_by'"]
+                   }
+                 }
+               }
+             } = errors_on(changeset)
+    end
+
+    test "segmentation is optional for count control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "count",
+        control_properties: %{
+          errors_resource: %{
+            id: 1,
+            type: "data_view"
+          }
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
+
+    test "segmentation is optional for percentage control_mode" do
+      quality_control = insert(:quality_control)
+
+      params = %{
+        name: "name",
+        control_mode: "percentage",
+        control_properties: %{
+          resource: %{
+            id: 1,
+            type: "data_view"
+          },
+          validation: [params_for(:clause_params_for)]
+        }
+      }
+
+      assert %{valid?: true} = QualityControlVersion.create_changeset(quality_control, params, 1)
+    end
   end
 
   describe "status_changeset/2" do
@@ -362,5 +636,28 @@ defmodule TdQx.QualityControls.QualityControlVersionTest do
 
       assert [] == errors
     end
+  end
+
+  defp segmentation_params_for do
+    params = string_params_for(:segmentation_params_for)
+
+    # Extract function name and type from aggregate_fields to insert it in the database
+    %{
+      "properties" => %{
+        "aggregate_fields" => [
+          %{
+            "expression" => %{
+              "value" => %{
+                "name" => function_name,
+                "type" => function_type
+              }
+            }
+          }
+        ]
+      }
+    } = params
+
+    insert(:function, name: function_name, type: function_type, class: "aggregator")
+    params
   end
 end
