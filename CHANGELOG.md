@@ -1,11 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- [TD-7838] Segmentation support for quality control validations
+  - Added optional `segmentation` field to `ControlProperties.Count` and `ControlProperties.Ratio`
+  - Segmentation allows grouping data by specified fields (e.g., country_code) to run validations per segment
+
 ## [8.0.0] 2026-01-12
 
 ### Added
 
 - [TD-7657] Audit messages for `quality_controls` and `score` related entities
 - [TD-7682] Enrich audit payload with hierarchical domain IDs and current domains mapping
+- [TD-7838] Segmentation support for quality control validations
+  - Added optional `segmentation` field to `ControlProperties.Count` and `ControlProperties.Ratio`
+  - Segmentation allows grouping data by specified fields (e.g., country_code) to run validations per segment
 
 ## [7.14.0] 2025-12-10
 
